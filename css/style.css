@@ -128,3 +128,54 @@ body {
   color: #8b949e;
   font-size: 0.8rem;
 }
+
+.tips-container {
+  padding: 16px;
+}
+.tip-category-title {
+  color: #ffffff;
+  font-size: 1rem;
+  margin: 16px 0 8px;
+}
+.tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tip-card {
+  background-color: #161b22;
+  border-left: 4px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.tip-base {
+  border-left-color: #3fb950;
+}
+.tip-gris {
+  border-left-color: #d29922;
+}
+.tip-sorpresa {
+  border-left-color: #f85149;
+}
+.tip-match {
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+.tip-detail {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin-bottom: 6px;
+}
+.tip-confianza {
+  color: #3fb950;
+  font-weight: 600;
+}
+.tip-razonamiento {
+  font-size: 0.8rem;
+  color: #8b949e;
+  line-height: 1.4;
+}
