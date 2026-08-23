@@ -9,12 +9,14 @@ async function checkConnection() {
     await loadStandings();
     await loadUpcomingMatches();
     await loadTips();
+    await loadTeamSelector();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
     statusEl.classList.add("status-error");
   }
 }
+
 
 async function loadStandings() {
   const container = document.getElementById("standings-container");
@@ -25,6 +27,75 @@ async function loadStandings() {
     container.textContent = "Error al cargar la tabla: " + error.message;
     return;
   }
+
+async function loadTeamSelector() {
+  const select = document.getElementById("team-select");
+  const { data, error } = await supabaseClient
+    .from("equipos")
+    .select("abreviatura, nombre")
+    .order("nombre");
+
+  if (error) {
+    console.error("Error cargando equipos:", error.message);
+    return;
+  }
+
+  data.forEach(equipo => {
+    const option = document.createElement("option");
+    option.value = equipo.abreviatura;
+    option.textContent = equipo.nombre;
+    select.appendChild(option);
+  });
+
+  select.addEventListener("change", (e) => {
+    if (e.target.value) loadRoster(e.target.value);
+    else document.getElementById("roster-container").innerHTML = "";
+  });
+}
+
+async function loadRoster(abreviatura) {
+  const container = document.getElementById("roster-container");
+  container.innerHTML = "Cargando plantilla...";
+
+  const { data, error } = await supabaseClient
+    .from("jugadores_equipo")
+    .select("*")
+    .eq("abreviatura", abreviatura);
+
+  if (error) {
+    container.textContent = "Error al cargar plantilla: " + error.message;
+    return;
+  }
+
+  const posiciones = [
+    { key: "POR", label: "Porteros" },
+    { key: "DEF", label: "Defensas" },
+    { key: "MED", label: "Mediocampistas" },
+    { key: "DEL", label: "Delanteros" }
+  ];
+
+  let html = "";
+  posiciones.forEach(pos => {
+    const jugadores = data.filter(j => j.posicion === pos.key);
+    if (jugadores.length === 0) return;
+
+    html += `<h3 class="roster-position-title">${pos.label}</h3><div class="roster-list">`;
+    jugadores.forEach(j => {
+      html += `
+        <div class="player-card">
+          <span class="player-number">${j.numero ?? '-'}</span>
+          <span class="player-name">${j.nombre}</span>
+          <span class="player-info">${j.nacionalidad}${j.edad ? ' · ' + j.edad + ' años' : ''}</span>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+  
   let html = `
     <table class="standings-table">
       <thead>
