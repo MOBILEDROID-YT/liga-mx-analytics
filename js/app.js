@@ -7,6 +7,7 @@ async function checkConnection() {
     statusEl.classList.remove("status-loading");
     statusEl.classList.add("status-ok");
     await loadStandings();
+    await loadUpcomingMatches();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
@@ -19,12 +20,10 @@ async function loadStandings() {
   const { data, error } = await supabaseClient
     .from("tabla_posiciones")
     .select("*");
-
   if (error) {
     container.textContent = "Error al cargar la tabla: " + error.message;
     return;
   }
-
   let html = `
     <table class="standings-table">
       <thead>
@@ -35,7 +34,6 @@ async function loadStandings() {
       </thead>
       <tbody>
   `;
-
   data.forEach((row, i) => {
     html += `
       <tr>
@@ -52,8 +50,47 @@ async function loadStandings() {
       </tr>
     `;
   });
-
   html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+async function loadUpcomingMatches() {
+  const container = document.getElementById("matches-container");
+  const { data, error } = await supabaseClient
+    .from("proximos_partidos")
+    .select("*");
+
+  if (error) {
+    container.textContent = "Error al cargar partidos: " + error.message;
+    return;
+  }
+
+  let html = `<h2 class="section-title">Próximos Partidos</h2><div class="matches-list">`;
+
+  data.forEach((row) => {
+    const fecha = new Date(row.fecha_hora_mx);
+    const fechaStr = fecha.toLocaleDateString("es-MX", { weekday: 'short', day: 'numeric', month: 'short' });
+    const horaStr = fecha.toLocaleTimeString("es-MX", { hour: '2-digit', minute: '2-digit' });
+    const enVivo = row.estado === 'en_vivo';
+
+    html += `
+      <div class="match-card ${enVivo ? 'match-live' : ''}">
+        <div class="match-jornada">J${row.jornada}</div>
+        <div class="match-teams">
+          <span class="team-name">${row.local}</span>
+          <span class="match-score">
+            ${enVivo ? `${row.goles_local ?? 0} - ${row.goles_visitante ?? 0}` : 'vs'}
+          </span>
+          <span class="team-name">${row.visitante}</span>
+        </div>
+        <div class="match-time">
+          ${enVivo ? '🔴 EN VIVO' : `${fechaStr} · ${horaStr}`}
+        </div>
+      </div>
+    `;
+  });
+
+  html += "</div>";
   container.innerHTML = html;
 }
 
