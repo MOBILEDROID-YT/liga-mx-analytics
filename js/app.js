@@ -167,9 +167,43 @@ async function loadTeamSelector() {
   });
 
   select.addEventListener("change", (e) => {
-    if (e.target.value) loadRoster(e.target.value);
-    else document.getElementById("roster-container").innerHTML = "";
+    if (e.target.value) {
+      loadDT(e.target.value);
+      loadRoster(e.target.value);
+    } else {
+      document.getElementById("dt-container").innerHTML = "";
+      document.getElementById("roster-container").innerHTML = "";
+    }
   });
+}
+
+async function loadDT(abreviatura) {
+  const container = document.getElementById("dt-container");
+  container.innerHTML = "Cargando DT...";
+
+  const { data, error } = await supabaseClient
+    .from("dt_por_equipo")
+    .select("*")
+    .eq("abreviatura", abreviatura)
+    .single();
+
+  if (error) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="dt-card">
+      <div class="dt-header">
+        <span class="dt-name">${data.dt_nombre}</span>
+        <span class="dt-nationality">${data.nacionalidad}${data.edad ? ' · ' + data.edad + ' años' : ''}</span>
+      </div>
+      ${data.sistema_tactico ? `<div class="dt-sistema">Sistema: <strong>${data.sistema_tactico}</strong></div>` : ''}
+      ${data.estilo_ofensivo ? `<div class="dt-estilo"><strong>Ofensiva:</strong> ${data.estilo_ofensivo}</div>` : ''}
+      ${data.estilo_defensivo ? `<div class="dt-estilo"><strong>Defensiva:</strong> ${data.estilo_defensivo}</div>` : ''}
+      ${data.balon_parado ? `<div class="dt-estilo"><strong>Balón parado:</strong> ${data.balon_parado}</div>` : ''}
+    </div>
+  `;
 }
 
 async function loadRoster(abreviatura) {
