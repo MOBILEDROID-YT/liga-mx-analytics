@@ -1,3 +1,25 @@
+// Colores de fondo por equipo (abreviatura -> color)
+const TEAM_COLORS = {
+  AME: "#8a6d00",
+  ATL: "#0d3d7a",
+  ATA: "#7a0f0f",
+  SLU: "#7a0f0f",
+  CAZ: "#014f86",
+  JUA: "#1b5e20",
+  CHI: "#7a0f1a",
+  LEO: "#00423a",
+  MTY: "#0a2a5e",
+  NEC: "#7a0f0f",
+  PAC: "#0d3d7a",
+  PUE: "#0d5c8a",
+  PUM: "#0f1a5e",
+  QRO: "#263238",
+  SAN: "#1b5e20",
+  TIG: "#a34700",
+  TIJ: "#7a0f3a",
+  TOL: "#8a1414"
+};
+
 async function checkConnection() {
   const statusEl = document.getElementById("connection-status");
   try {
@@ -10,11 +32,36 @@ async function checkConnection() {
     await loadUpcomingMatches();
     await loadTips();
     await loadTeamSelector();
+    setupBannerTabs();
+    setupModalClose();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
     statusEl.classList.add("status-error");
   }
+}
+
+function setupBannerTabs() {
+  const tabs = document.querySelectorAll(".banner-tab");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById(tab.dataset.tab + "-container").classList.add("active");
+    });
+  });
+}
+
+function setupModalClose() {
+  document.getElementById("close-modal").addEventListener("click", () => {
+    document.getElementById("team-modal").classList.add("hidden");
+  });
+  document.getElementById("team-modal").addEventListener("click", (e) => {
+    if (e.target.id === "team-modal") {
+      document.getElementById("team-modal").classList.add("hidden");
+    }
+  });
 }
 
 async function loadStandings() {
@@ -67,7 +114,7 @@ async function loadUpcomingMatches() {
     return;
   }
 
-  let html = `<h2 class="section-title">Próximos Partidos</h2><div class="matches-list">`;
+  let html = `<div class="matches-list">`;
 
   data.forEach((row) => {
     const fecha = new Date(row.fecha_hora_mx);
@@ -121,13 +168,12 @@ async function loadTips() {
     { key: "sorpresa", label: "🔴 Sorpresa", clase: "tip-sorpresa" }
   ];
 
-  let html = `<h2 class="section-title">Tips · Jornada ${jornadaActual}</h2>`;
+  let html = `<div class="tips-scroll">`;
 
   categorias.forEach(cat => {
     const items = tipsJornada.filter(t => t.categoria === cat.key);
     if (items.length === 0) return;
 
-    html += `<h3 class="tip-category-title">${cat.label}</h3><div class="tips-list">`;
     items.forEach(t => {
       html += `
         <div class="tip-card ${cat.clase}">
@@ -137,13 +183,12 @@ async function loadTips() {
             <span class="tip-prediccion">${t.prediccion}</span>
             <span class="tip-confianza">${t.confianza}%</span>
           </div>
-          <div class="tip-razonamiento">${t.razonamiento}</div>
         </div>
       `;
     });
-    html += `</div>`;
   });
 
+  html += "</div>";
   container.innerHTML = html;
 }
 
@@ -168,18 +213,27 @@ async function loadTeamSelector() {
 
   select.addEventListener("change", (e) => {
     if (e.target.value) {
-      loadDT(e.target.value);
-      loadRoster(e.target.value);
-    } else {
-      document.getElementById("dt-container").innerHTML = "";
-      document.getElementById("roster-container").innerHTML = "";
+      openTeamModal(e.target.value);
     }
   });
 }
 
+async function openTeamModal(abreviatura) {
+  const modal = document.getElementById("team-modal");
+  const modalContent = document.getElementById("team-modal-content");
+  const color = TEAM_COLORS[abreviatura] || "#161b22";
+
+  modalContent.style.backgroundColor = color;
+  modal.classList.remove("hidden");
+
+  document.getElementById("dt-container").innerHTML = "Cargando DT...";
+  document.getElementById("roster-container").innerHTML = "Cargando plantilla...";
+
+  await Promise.all([loadDT(abreviatura), loadRoster(abreviatura)]);
+}
+
 async function loadDT(abreviatura) {
   const container = document.getElementById("dt-container");
-  container.innerHTML = "Cargando DT...";
 
   const { data, error } = await supabaseClient
     .from("dt_por_equipo")
@@ -208,7 +262,6 @@ async function loadDT(abreviatura) {
 
 async function loadRoster(abreviatura) {
   const container = document.getElementById("roster-container");
-  container.innerHTML = "Cargando plantilla...";
 
   const { data, error } = await supabaseClient
     .from("jugadores_equipo")
