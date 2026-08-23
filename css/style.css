@@ -60,3 +60,24 @@ body {
   color: #f85149;
   border: 1px solid #da3633;
 }
+.standings-container {
+  padding: 16px;
+  overflow-x: auto;
+}
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.standings-table th, .standings-table td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid #21262d;
+}
+.standings-table th {
+  color: #8b949e;
+  font-weight: 600;
+}
+.standings-table td:nth-child(2) {
+  text-align: left;
+}
