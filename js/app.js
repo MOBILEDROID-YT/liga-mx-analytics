@@ -1,24 +1,4 @@
-// Colores de fondo por equipo (abreviatura -> color)
-const TEAM_COLORS = {
-  AME: "#8a6d00",
-  ATL: "#0d3d7a",
-  ATA: "#7a0f0f",
-  SLU: "#7a0f0f",
-  CAZ: "#014f86",
-  JUA: "#1b5e20",
-  CHI: "#7a0f1a",
-  LEO: "#00423a",
-  MTY: "#0a2a5e",
-  NEC: "#7a0f0f",
-  PAC: "#0d3d7a",
-  PUE: "#0d5c8a",
-  PUM: "#0f1a5e",
-  QRO: "#263238",
-  SAN: "#1b5e20",
-  TIG: "#a34700",
-  TIJ: "#7a0f3a",
-  TOL: "#8a1414"
-};
+let teamNameMap = {};
 
 async function checkConnection() {
   const statusEl = document.getElementById("connection-status");
@@ -29,11 +9,12 @@ async function checkConnection() {
     statusEl.classList.remove("status-loading");
     statusEl.classList.add("status-ok");
     await loadStandings();
-    await loadUpcomingMatches();
     await loadTips();
     await loadTeamSelector();
+    await loadTeamNamesForSearch();
     setupBannerTabs();
     setupModalClose();
+    setupCalendarSearch();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
@@ -103,46 +84,6 @@ async function loadStandings() {
   container.innerHTML = html;
 }
 
-async function loadUpcomingMatches() {
-  const container = document.getElementById("matches-container");
-  const { data, error } = await supabaseClient
-    .from("proximos_partidos")
-    .select("*");
-
-  if (error) {
-    container.textContent = "Error al cargar partidos: " + error.message;
-    return;
-  }
-
-  let html = `<div class="matches-list">`;
-
-  data.forEach((row) => {
-    const fecha = new Date(row.fecha_hora_mx);
-    const fechaStr = fecha.toLocaleDateString("es-MX", { weekday: 'short', day: 'numeric', month: 'short' });
-    const horaStr = fecha.toLocaleTimeString("es-MX", { hour: '2-digit', minute: '2-digit' });
-    const enVivo = row.estado === 'en_vivo';
-
-    html += `
-      <div class="match-card ${enVivo ? 'match-live' : ''}">
-        <div class="match-jornada">J${row.jornada}</div>
-        <div class="match-teams">
-          <span class="team-name">${row.local}</span>
-          <span class="match-score">
-            ${enVivo ? `${row.goles_local ?? 0} - ${row.goles_visitante ?? 0}` : 'vs'}
-          </span>
-          <span class="team-name">${row.visitante}</span>
-        </div>
-        <div class="match-time">
-          ${enVivo ? '🔴 EN VIVO' : `${fechaStr} · ${horaStr}`}
-        </div>
-      </div>
-    `;
-  });
-
-  html += "</div>";
-  container.innerHTML = html;
-}
-
 async function loadTips() {
   const container = document.getElementById("tips-container");
   const { data, error } = await supabaseClient
@@ -161,6 +102,8 @@ async function loadTips() {
 
   const jornadaActual = Math.max(...data.map(t => t.jornada));
   const tipsJornada = data.filter(t => t.jornada === jornadaActual);
+
+  document.querySelector('[data-tab="tips"]').textContent = `Tips Jornada ${jornadaActual}`;
 
   const categorias = [
     { key: "base", label: "🟢 Base", clase: "tip-base" },
@@ -192,6 +135,140 @@ async function loadTips() {
   container.innerHTML = html;
 }
 
+async function loadTeamNamesForSearch() {
+  const { data, error } = await supabaseClient
+    .from("equipos")
+    .select("abreviatura, nombre")
+    .order("nombre");
+
+  if (error) return;
+
+  const datalist = document.getElementById("team-list");
+  data.forEach(t => {
+    teamNameMap[t.nombre.toLowerCase()] = { abv: t.abreviatura, nombre: t.nombre };
+    const option = document.createElement("option");
+    option.value = t.nombre;
+    datalist.appendChild(option);
+  });
+}
+
+function setupCalendarSearch() {
+  const input = document.getElementById("team-search-input");
+  const searchBtn = document.getElementById("search-team-btn");
+  const fullBtn = document.getElementById("full-calendar-btn");
+
+  function doSearch() {
+    const query = input.value.trim().toLowerCase();
+    if (!query) return;
+    const matchKey = Object.keys(teamNameMap).find(name => name.includes(query));
+    if (matchKey) {
+      const team = teamNameMap[matchKey];
+      loadTeamCalendar(team.abv, team.nombre);
+    } else {
+      document.getElementById("calendar-results").innerHTML =
+        `<p class="calendar-empty">Equipo no encontrado. Intenta con otro nombre.</p>`;
+    }
+  }
+
+  searchBtn.addEventListener("click", doSearch);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") doSearch();
+  });
+  fullBtn.addEventListener("click", loadFullCalendarView);
+}
+
+async function loadTeamCalendar(abreviatura, teamName) {
+  const container = document.getElementById("calendar-results");
+  container.innerHTML = "Cargando calendario...";
+
+  const { data, error } = await supabaseClient
+    .from("calendario_equipo")
+    .select("*")
+    .eq("equipo_abv", abreviatura)
+    .order("jornada");
+
+  if (error) {
+    container.textContent = "Error al cargar calendario: " + error.message;
+    return;
+  }
+
+  let html = `<h3 class="calendar-team-title">${teamName}</h3><div class="calendar-list">`;
+
+  data.forEach(row => {
+    const vs = row.condicion === 'local' ? `vs ${row.rival}` : `@ ${row.rival}`;
+    let resultBadge = '';
+
+    if (row.estado === 'finalizado') {
+      const marcador = row.condicion === 'local'
+        ? `${row.goles_local}-${row.goles_visitante}`
+        : `${row.goles_visitante}-${row.goles_local}`;
+      const claseResultado = row.resultado === 'G' ? 'badge-win' : row.resultado === 'E' ? 'badge-draw' : 'badge-loss';
+      resultBadge = `<span class="calendar-badge ${claseResultado}">${row.resultado} ${marcador}</span>`;
+    } else {
+      const fecha = new Date(row.fecha_hora_mx);
+      const fechaStr = fecha.toLocaleDateString("es-MX", { day: 'numeric', month: 'short' });
+      const enVivo = row.estado === 'en_vivo';
+      resultBadge = enVivo
+        ? `<span class="calendar-badge badge-live">EN VIVO</span>`
+        : `<span class="calendar-badge badge-pending">${fechaStr}</span>`;
+    }
+
+    html += `
+      <div class="calendar-row">
+        <span class="calendar-jornada">J${row.jornada}</span>
+        <span class="calendar-vs">${vs}</span>
+        ${resultBadge}
+      </div>
+    `;
+  });
+
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+async function loadFullCalendarView() {
+  const container = document.getElementById("calendar-results");
+  container.innerHTML = "Cargando calendario completo...";
+
+  const { data, error } = await supabaseClient
+    .from("calendario_completo")
+    .select("*");
+
+  if (error) {
+    container.textContent = "Error al cargar calendario: " + error.message;
+    return;
+  }
+
+  const jornadas = [...new Set(data.map(m => m.jornada))].sort((a, b) => a - b);
+
+  let html = "";
+  jornadas.forEach(num => {
+    const matches = data.filter(m => m.jornada === num);
+    html += `<h3 class="calendar-jornada-title">Jornada ${num}</h3><div class="calendar-list">`;
+    matches.forEach(m => {
+      const enVivo = m.estado === 'en_vivo';
+      const finalizado = m.estado === 'finalizado';
+      let scoreHtml;
+      if (finalizado || enVivo) {
+        scoreHtml = `<span class="calendar-badge ${enVivo ? 'badge-live' : 'badge-score'}">${m.goles_local ?? 0} - ${m.goles_visitante ?? 0}</span>`;
+      } else {
+        const fecha = new Date(m.fecha_hora_mx);
+        const fechaStr = fecha.toLocaleDateString("es-MX", { day: 'numeric', month: 'short' });
+        scoreHtml = `<span class="calendar-badge badge-pending">${fechaStr}</span>`;
+      }
+      html += `
+        <div class="calendar-row">
+          <span class="calendar-vs">${m.local} vs ${m.visitante}</span>
+          ${scoreHtml}
+        </div>
+      `;
+    });
+    html += "</div>";
+  });
+
+  container.innerHTML = html;
+}
+
 async function loadTeamSelector() {
   const select = document.getElementById("team-select");
   const { data, error } = await supabaseClient
@@ -220,10 +297,6 @@ async function loadTeamSelector() {
 
 async function openTeamModal(abreviatura) {
   const modal = document.getElementById("team-modal");
-  const modalContent = document.getElementById("team-modal-content");
-  const color = TEAM_COLORS[abreviatura] || "#161b22";
-
-  modalContent.style.backgroundColor = color;
   modal.classList.remove("hidden");
 
   document.getElementById("dt-container").innerHTML = "Cargando DT...";
