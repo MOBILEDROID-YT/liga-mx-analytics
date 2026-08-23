@@ -8,6 +8,7 @@ async function checkConnection() {
     statusEl.classList.add("status-ok");
     await loadStandings();
     await loadUpcomingMatches();
+    await loadTips();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
@@ -91,6 +92,57 @@ async function loadUpcomingMatches() {
   });
 
   html += "</div>";
+  container.innerHTML = html;
+}
+
+async function loadTips() {
+  const container = document.getElementById("tips-container");
+  const { data, error } = await supabaseClient
+    .from("tips_completos")
+    .select("*");
+
+  if (error) {
+    container.textContent = "Error al cargar tips: " + error.message;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const jornadaActual = Math.max(...data.map(t => t.jornada));
+  const tipsJornada = data.filter(t => t.jornada === jornadaActual);
+
+  const categorias = [
+    { key: "base", label: "🟢 Base", clase: "tip-base" },
+    { key: "zona_gris", label: "🟡 Zona Gris", clase: "tip-gris" },
+    { key: "sorpresa", label: "🔴 Sorpresa", clase: "tip-sorpresa" }
+  ];
+
+  let html = `<h2 class="section-title">Tips · Jornada ${jornadaActual}</h2>`;
+
+  categorias.forEach(cat => {
+    const items = tipsJornada.filter(t => t.categoria === cat.key);
+    if (items.length === 0) return;
+
+    html += `<h3 class="tip-category-title">${cat.label}</h3><div class="tips-list">`;
+    items.forEach(t => {
+      html += `
+        <div class="tip-card ${cat.clase}">
+          <div class="tip-match">${t.local} vs ${t.visitante}</div>
+          <div class="tip-detail">
+            <span class="tip-tipo">${t.tipo_apuesta}</span>
+            <span class="tip-prediccion">${t.prediccion}</span>
+            <span class="tip-confianza">${t.confianza}%</span>
+          </div>
+          <div class="tip-razonamiento">${t.razonamiento}</div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  });
+
   container.innerHTML = html;
 }
 
