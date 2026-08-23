@@ -11,10 +11,22 @@
   <div class="hero-banner">
     <div class="hero-left">
       <div class="banner-tabs">
-        <button class="banner-tab active" data-tab="matches">Próximos Partidos</button>
+        <button class="banner-tab active" data-tab="calendar">Calendario</button>
         <button class="banner-tab" data-tab="tips">Tips</button>
       </div>
-      <div id="matches-container" class="banner-panel active"></div>
+
+      <div id="calendar-container" class="banner-panel active">
+        <div class="calendar-search">
+          <input type="text" id="team-search-input" list="team-list" placeholder="Buscar equipo (ej. América)...">
+          <datalist id="team-list"></datalist>
+          <button id="search-team-btn">Buscar</button>
+          <button id="full-calendar-btn">Ver calendario completo</button>
+        </div>
+        <div id="calendar-results" class="calendar-results">
+          <p class="calendar-empty">Busca un equipo o revisa el calendario completo.</p>
+        </div>
+      </div>
+
       <div id="tips-container" class="banner-panel"></div>
     </div>
     <div class="hero-right">
