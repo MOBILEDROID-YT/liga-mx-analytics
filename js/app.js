@@ -10,10 +10,9 @@ async function checkConnection() {
     statusEl.classList.add("status-ok");
     await loadStandings();
     await loadTips();
-    await loadTeamSelector();
+    await loadRosterTab();
     await loadTeamNamesForSearch();
-    setupBannerTabs();
-    setupModalClose();
+    setupBanner();
     setupCalendarSearch();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
@@ -22,49 +21,63 @@ async function checkConnection() {
   }
 }
 
-function setupBannerTabs() {
+// ===== BANNER (expandible con hover en desktop, click en táctil) =====
+function setupBanner() {
+  const banner = document.getElementById("megaBanner");
   const tabs = document.querySelectorAll(".banner-tab");
+
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
       tabs.forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
       tab.classList.add("active");
       document.getElementById(tab.dataset.tab + "-container").classList.add("active");
+      banner.classList.add("expanded");
     });
   });
-}
 
-function setupModalClose() {
-  document.getElementById("close-modal").addEventListener("click", () => {
-    document.getElementById("team-modal").classList.add("hidden");
-  });
-  document.getElementById("team-modal").addEventListener("click", (e) => {
-    if (e.target.id === "team-modal") {
-      document.getElementById("team-modal").classList.add("hidden");
-    }
+  document.querySelector(".banner-topbar").addEventListener("click", (e) => {
+    if (e.target.closest(".banner-tab") || e.target.closest(".banner-search")) return;
+    banner.classList.toggle("expanded");
   });
 }
 
+// ===== TABLA DE POSICIONES + FORMA RECIENTE =====
 async function loadStandings() {
   const container = document.getElementById("standings-container");
-  const { data, error } = await supabaseClient
-    .from("tabla_posiciones")
-    .select("*");
-  if (error) {
-    container.textContent = "Error al cargar la tabla: " + error.message;
+
+  const [{ data: tabla, error: err1 }, { data: forma, error: err2 }] = await Promise.all([
+    supabaseClient.from("tabla_posiciones").select("*"),
+    supabaseClient.from("forma_reciente").select("*")
+  ]);
+
+  if (err1) {
+    container.textContent = "Error al cargar la tabla: " + err1.message;
     return;
   }
+
+  const formaMap = {};
+  if (!err2 && forma) {
+    forma.forEach(f => { formaMap[f.abreviatura] = f.ultimos5; });
+  }
+
   let html = `
     <table class="standings-table">
       <thead>
         <tr>
           <th>#</th><th>Club</th><th>PJ</th><th>G</th><th>E</th><th>P</th>
-          <th>GF</th><th>GC</th><th>DG</th><th>Pts</th>
+          <th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Últimos 5</th>
         </tr>
       </thead>
       <tbody>
   `;
-  data.forEach((row, i) => {
+  tabla.forEach((row, i) => {
+    const ultimos5 = formaMap[row.abreviatura] || [];
+    const dots = ultimos5.map(r => {
+      const clase = r === 'G' ? 'form-win' : r === 'E' ? 'form-draw' : 'form-loss';
+      return `<span class="form-dot ${clase}" title="${r === 'G' ? 'Victoria' : r === 'E' ? 'Empate' : 'Derrota'}"></span>`;
+    }).join("");
+
     html += `
       <tr>
         <td>${i + 1}</td>
@@ -77,6 +90,7 @@ async function loadStandings() {
         <td>${row.gc}</td>
         <td>${row.dg}</td>
         <td><strong>${row.pts}</strong></td>
+        <td class="form-cell">${dots}</td>
       </tr>
     `;
   });
@@ -84,6 +98,7 @@ async function loadStandings() {
   container.innerHTML = html;
 }
 
+// ===== TIPS =====
 async function loadTips() {
   const container = document.getElementById("tips-container");
   const { data, error } = await supabaseClient
@@ -103,7 +118,7 @@ async function loadTips() {
   const jornadaActual = Math.max(...data.map(t => t.jornada));
   const tipsJornada = data.filter(t => t.jornada === jornadaActual);
 
-  document.querySelector('[data-tab="tips"]').textContent = `Tips Jornada ${jornadaActual}`;
+  document.getElementById("tipsTabBtn").textContent = `Tips Jornada ${jornadaActual}`;
 
   const categorias = [
     { key: "base", label: "🟢 Base", clase: "tip-base" },
@@ -135,6 +150,7 @@ async function loadTips() {
   container.innerHTML = html;
 }
 
+// ===== BUSCADOR DE CALENDARIO =====
 async function loadTeamNamesForSearch() {
   const { data, error } = await supabaseClient
     .from("equipos")
@@ -156,10 +172,20 @@ function setupCalendarSearch() {
   const input = document.getElementById("team-search-input");
   const searchBtn = document.getElementById("search-team-btn");
   const fullBtn = document.getElementById("full-calendar-btn");
+  const banner = document.getElementById("megaBanner");
+
+  function activateCalendarTab() {
+    document.querySelectorAll(".banner-tab").forEach(t => t.classList.remove("active"));
+    document.querySelector('[data-tab="calendar"]').classList.add("active");
+    document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("calendar-container").classList.add("active");
+    banner.classList.add("expanded");
+  }
 
   function doSearch() {
     const query = input.value.trim().toLowerCase();
     if (!query) return;
+    activateCalendarTab();
     const matchKey = Object.keys(teamNameMap).find(name => name.includes(query));
     if (matchKey) {
       const team = teamNameMap[matchKey];
@@ -174,7 +200,10 @@ function setupCalendarSearch() {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") doSearch();
   });
-  fullBtn.addEventListener("click", loadFullCalendarView);
+  fullBtn.addEventListener("click", () => {
+    activateCalendarTab();
+    loadFullCalendarView();
+  });
 }
 
 async function loadTeamCalendar(abreviatura, teamName) {
@@ -269,7 +298,8 @@ async function loadFullCalendarView() {
   container.innerHTML = html;
 }
 
-async function loadTeamSelector() {
+// ===== PLANTILLAS =====
+async function loadRosterTab() {
   const select = document.getElementById("team-select");
   const { data, error } = await supabaseClient
     .from("equipos")
@@ -290,23 +320,18 @@ async function loadTeamSelector() {
 
   select.addEventListener("change", (e) => {
     if (e.target.value) {
-      openTeamModal(e.target.value);
+      loadDT(e.target.value);
+      loadRoster(e.target.value);
+    } else {
+      document.getElementById("dt-container").innerHTML = "";
+      document.getElementById("roster-container").innerHTML = "";
     }
   });
 }
 
-async function openTeamModal(abreviatura) {
-  const modal = document.getElementById("team-modal");
-  modal.classList.remove("hidden");
-
-  document.getElementById("dt-container").innerHTML = "Cargando DT...";
-  document.getElementById("roster-container").innerHTML = "Cargando plantilla...";
-
-  await Promise.all([loadDT(abreviatura), loadRoster(abreviatura)]);
-}
-
 async function loadDT(abreviatura) {
   const container = document.getElementById("dt-container");
+  container.innerHTML = "Cargando DT...";
 
   const { data, error } = await supabaseClient
     .from("dt_por_equipo")
@@ -335,6 +360,7 @@ async function loadDT(abreviatura) {
 
 async function loadRoster(abreviatura) {
   const container = document.getElementById("roster-container");
+  container.innerHTML = "Cargando plantilla...";
 
   const { data, error } = await supabaseClient
     .from("jugadores_equipo")
