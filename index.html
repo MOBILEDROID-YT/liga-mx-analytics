@@ -37,12 +37,11 @@
 
       <div id="tips-container" class="banner-panel"></div>
 
-      <div id="roster-panel" class="banner-panel">
+      <div id="roster-container" class="banner-panel">
         <select id="team-select" class="team-select">
           <option value="">Selecciona un equipo...</option>
         </select>
-        <div id="dt-container"></div>
-        <div id="roster-container"></div>
+        <p class="calendar-empty">Elige un equipo para ver su director técnico y plantilla.</p>
       </div>
 
       <div id="soporte-container" class="banner-panel">
@@ -65,6 +64,14 @@
   </main>
 
   <section id="standings-container" class="standings-container"></section>
+
+  <div id="team-modal" class="team-modal hidden">
+    <div class="team-modal-content" id="team-modal-content">
+      <button id="close-modal" class="close-modal">✕</button>
+      <div id="dt-container"></div>
+      <div id="roster-list-container"></div>
+    </div>
+  </div>
 
   <!-- Librería oficial de Supabase vía CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
