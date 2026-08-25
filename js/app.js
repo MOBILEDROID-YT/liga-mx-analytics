@@ -1,5 +1,13 @@
 let teamNameMap = {};
 
+const TEAM_COLORS = {
+  AME: "#8a6d00", ATL: "#0d3d7a", ATA: "#7a0f0f", SLU: "#7a0f0f",
+  CAZ: "#014f86", JUA: "#1b5e20", CHI: "#7a0f1a", LEO: "#00423a",
+  MTY: "#0a2a5e", NEC: "#7a0f0f", PAC: "#0d3d7a", PUE: "#0d5c8a",
+  PUM: "#0f1a5e", QRO: "#263238", SAN: "#1b5e20", TIG: "#a34700",
+  TIJ: "#7a0f3a", TOL: "#8a1414"
+};
+
 async function checkConnection() {
   const statusEl = document.getElementById("connection-status");
   try {
@@ -14,6 +22,7 @@ async function checkConnection() {
     await loadTeamNamesForSearch();
     setupBanner();
     setupCalendarSearch();
+    setupModalClose();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
@@ -21,7 +30,7 @@ async function checkConnection() {
   }
 }
 
-// ===== BANNER (expandible con hover en desktop, click en táctil) =====
+// ===== BANNER EXPANDIBLE =====
 function setupBanner() {
   const banner = document.getElementById("megaBanner");
   const tabs = document.querySelectorAll(".banner-tab");
@@ -31,7 +40,8 @@ function setupBanner() {
       tabs.forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
       tab.classList.add("active");
-      document.getElementById(tab.dataset.tab + "-container").classList.add("active");
+      const panel = document.getElementById(tab.dataset.tab + "-container");
+      if (panel) panel.classList.add("active");
       banner.classList.add("expanded");
     });
   });
@@ -39,6 +49,17 @@ function setupBanner() {
   document.querySelector(".banner-topbar").addEventListener("click", (e) => {
     if (e.target.closest(".banner-tab") || e.target.closest(".banner-search")) return;
     banner.classList.toggle("expanded");
+  });
+}
+
+function setupModalClose() {
+  document.getElementById("close-modal").addEventListener("click", () => {
+    document.getElementById("team-modal").classList.add("hidden");
+  });
+  document.getElementById("team-modal").addEventListener("click", (e) => {
+    if (e.target.id === "team-modal") {
+      document.getElementById("team-modal").classList.add("hidden");
+    }
   });
 }
 
@@ -75,7 +96,7 @@ async function loadStandings() {
     const ultimos5 = formaMap[row.abreviatura] || [];
     const dots = ultimos5.map(r => {
       const clase = r === 'G' ? 'form-win' : r === 'E' ? 'form-draw' : 'form-loss';
-      return `<span class="form-dot ${clase}" title="${r === 'G' ? 'Victoria' : r === 'E' ? 'Empate' : 'Derrota'}"></span>`;
+      return `<span class="form-dot ${clase}"></span>`;
     }).join("");
 
     html += `
@@ -109,7 +130,6 @@ async function loadTips() {
     container.textContent = "Error al cargar tips: " + error.message;
     return;
   }
-
   if (!data || data.length === 0) {
     container.innerHTML = "";
     return;
@@ -117,7 +137,6 @@ async function loadTips() {
 
   const jornadaActual = Math.max(...data.map(t => t.jornada));
   const tipsJornada = data.filter(t => t.jornada === jornadaActual);
-
   document.getElementById("tipsTabBtn").textContent = `Tips Jornada ${jornadaActual}`;
 
   const categorias = [
@@ -127,11 +146,8 @@ async function loadTips() {
   ];
 
   let html = `<div class="tips-scroll">`;
-
   categorias.forEach(cat => {
     const items = tipsJornada.filter(t => t.categoria === cat.key);
-    if (items.length === 0) return;
-
     items.forEach(t => {
       html += `
         <div class="tip-card ${cat.clase}">
@@ -145,7 +161,6 @@ async function loadTips() {
       `;
     });
   });
-
   html += "</div>";
   container.innerHTML = html;
 }
@@ -156,7 +171,6 @@ async function loadTeamNamesForSearch() {
     .from("equipos")
     .select("abreviatura, nombre")
     .order("nombre");
-
   if (error) return;
 
   const datalist = document.getElementById("team-list");
@@ -197,9 +211,7 @@ function setupCalendarSearch() {
   }
 
   searchBtn.addEventListener("click", doSearch);
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doSearch();
-  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
   fullBtn.addEventListener("click", () => {
     activateCalendarTab();
     loadFullCalendarView();
@@ -222,11 +234,9 @@ async function loadTeamCalendar(abreviatura, teamName) {
   }
 
   let html = `<h3 class="calendar-team-title">${teamName}</h3><div class="calendar-list">`;
-
   data.forEach(row => {
     const vs = row.condicion === 'local' ? `vs ${row.rival}` : `@ ${row.rival}`;
     let resultBadge = '';
-
     if (row.estado === 'finalizado') {
       const marcador = row.condicion === 'local'
         ? `${row.goles_local}-${row.goles_visitante}`
@@ -241,7 +251,6 @@ async function loadTeamCalendar(abreviatura, teamName) {
         ? `<span class="calendar-badge badge-live">EN VIVO</span>`
         : `<span class="calendar-badge badge-pending">${fechaStr}</span>`;
     }
-
     html += `
       <div class="calendar-row">
         <span class="calendar-jornada">J${row.jornada}</span>
@@ -250,7 +259,6 @@ async function loadTeamCalendar(abreviatura, teamName) {
       </div>
     `;
   });
-
   html += "</div>";
   container.innerHTML = html;
 }
@@ -269,7 +277,6 @@ async function loadFullCalendarView() {
   }
 
   const jornadas = [...new Set(data.map(m => m.jornada))].sort((a, b) => a - b);
-
   let html = "";
   jornadas.forEach(num => {
     const matches = data.filter(m => m.jornada === num);
@@ -294,11 +301,10 @@ async function loadFullCalendarView() {
     });
     html += "</div>";
   });
-
   container.innerHTML = html;
 }
 
-// ===== PLANTILLAS =====
+// ===== PLANTILLAS (selector en banner → abre modal con color por equipo) =====
 async function loadRosterTab() {
   const select = document.getElementById("team-select");
   const { data, error } = await supabaseClient
@@ -319,30 +325,33 @@ async function loadRosterTab() {
   });
 
   select.addEventListener("change", (e) => {
-    if (e.target.value) {
-      loadDT(e.target.value);
-      loadRoster(e.target.value);
-    } else {
-      document.getElementById("dt-container").innerHTML = "";
-      document.getElementById("roster-container").innerHTML = "";
-    }
+    if (e.target.value) openTeamModal(e.target.value);
   });
+}
+
+async function openTeamModal(abreviatura) {
+  const modal = document.getElementById("team-modal");
+  const modalContent = document.getElementById("team-modal-content");
+  const color = TEAM_COLORS[abreviatura] || "#161b22";
+
+  modalContent.style.backgroundColor = color;
+  modal.classList.remove("hidden");
+
+  document.getElementById("dt-container").innerHTML = "Cargando DT...";
+  document.getElementById("roster-list-container").innerHTML = "Cargando plantilla...";
+
+  await Promise.all([loadDT(abreviatura), loadRoster(abreviatura)]);
 }
 
 async function loadDT(abreviatura) {
   const container = document.getElementById("dt-container");
-  container.innerHTML = "Cargando DT...";
-
   const { data, error } = await supabaseClient
     .from("dt_por_equipo")
     .select("*")
     .eq("abreviatura", abreviatura)
     .single();
 
-  if (error) {
-    container.innerHTML = "";
-    return;
-  }
+  if (error) { container.innerHTML = ""; return; }
 
   container.innerHTML = `
     <div class="dt-card">
@@ -359,9 +368,7 @@ async function loadDT(abreviatura) {
 }
 
 async function loadRoster(abreviatura) {
-  const container = document.getElementById("roster-container");
-  container.innerHTML = "Cargando plantilla...";
-
+  const container = document.getElementById("roster-list-container");
   const { data, error } = await supabaseClient
     .from("jugadores_equipo")
     .select("*")
@@ -383,7 +390,6 @@ async function loadRoster(abreviatura) {
   posiciones.forEach(pos => {
     const jugadores = data.filter(j => j.posicion === pos.key);
     if (jugadores.length === 0) return;
-
     html += `<h3 class="roster-position-title">${pos.label}</h3><div class="roster-list">`;
     jugadores.forEach(j => {
       html += `
@@ -396,7 +402,6 @@ async function loadRoster(abreviatura) {
     });
     html += `</div>`;
   });
-
   container.innerHTML = html;
 }
 
