@@ -8,32 +8,55 @@
 </head>
 <body>
 
-  <div class="hero-banner">
-    <div class="hero-left">
-      <div class="banner-tabs">
-        <button class="banner-tab active" data-tab="calendar">Calendario</button>
-        <button class="banner-tab" data-tab="tips">Tips</button>
+  <header class="mega-banner" id="megaBanner">
+    <div class="banner-topbar">
+      <div class="banner-title">
+        <h1 class="app-title-3d">LIGA MX<br>ANALYTICS</h1>
       </div>
+      <nav class="banner-tabs">
+        <button class="banner-tab active" data-tab="calendar">Calendario</button>
+        <button class="banner-tab" data-tab="tips" id="tipsTabBtn">Tips</button>
+        <button class="banner-tab" data-tab="roster">Plantillas</button>
+        <button class="banner-tab" data-tab="soporte">Soporte</button>
+      </nav>
+      <div class="banner-search">
+        <input type="text" id="team-search-input" list="team-list" placeholder="Buscar equipo...">
+        <datalist id="team-list"></datalist>
+        <button id="search-team-btn">🔍</button>
+      </div>
+    </div>
+
+    <div class="banner-expand" id="bannerExpand">
 
       <div id="calendar-container" class="banner-panel active">
-        <div class="calendar-search">
-          <input type="text" id="team-search-input" list="team-list" placeholder="Buscar equipo (ej. América)...">
-          <datalist id="team-list"></datalist>
-          <button id="search-team-btn">Buscar</button>
-          <button id="full-calendar-btn">Ver calendario completo</button>
-        </div>
+        <button id="full-calendar-btn" class="full-calendar-btn">Ver calendario completo</button>
         <div id="calendar-results" class="calendar-results">
-          <p class="calendar-empty">Busca un equipo o revisa el calendario completo.</p>
+          <p class="calendar-empty">Busca un equipo arriba o revisa el calendario completo.</p>
         </div>
       </div>
 
       <div id="tips-container" class="banner-panel"></div>
+
+      <div id="roster-panel" class="banner-panel">
+        <select id="team-select" class="team-select">
+          <option value="">Selecciona un equipo...</option>
+        </select>
+        <div id="dt-container"></div>
+        <div id="roster-container"></div>
+      </div>
+
+      <div id="soporte-container" class="banner-panel">
+        <h3 class="soporte-title">Soporte y Contacto</h3>
+        <p class="soporte-text">
+          ¿Tienes dudas, encontraste un error en los datos, o quieres reportar algo? Escríbenos.
+        </p>
+        <div class="soporte-item">📧 Correo: <strong>contacto@ligamxanalytics.com</strong></div>
+        <div class="soporte-item">🐦 Redes: <strong>@LigaMXAnalytics</strong></div>
+        <p class="soporte-note">*Actualiza estos datos de contacto por los tuyos reales.</p>
+      </div>
+
     </div>
-    <div class="hero-right">
-      <h1 class="app-title-3d">LIGA MX<br>ANALYTICS</h1>
-      <p class="subtitle">Plataforma de análisis y predicción</p>
-    </div>
-  </div>
+  </header>
 
   <main class="status-container">
     <div id="connection-status" class="status-card status-loading">
@@ -42,23 +65,6 @@
   </main>
 
   <section id="standings-container" class="standings-container"></section>
-
-  <section class="roster-section">
-    <div class="roster-header">
-      <h2 class="section-title">Plantillas</h2>
-      <select id="team-select" class="team-select">
-        <option value="">Selecciona un equipo...</option>
-      </select>
-    </div>
-  </section>
-
-  <div id="team-modal" class="team-modal hidden">
-    <div class="team-modal-content" id="team-modal-content">
-      <button id="close-modal" class="close-modal">✕</button>
-      <div id="dt-container"></div>
-      <div id="roster-container"></div>
-    </div>
-  </div>
 
   <!-- Librería oficial de Supabase vía CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
