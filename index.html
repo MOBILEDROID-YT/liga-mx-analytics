@@ -17,6 +17,7 @@
         <button class="banner-tab active" data-tab="calendar">Calendario</button>
         <button class="banner-tab" data-tab="tips" id="tipsTabBtn">Tips</button>
         <button class="banner-tab" data-tab="roster">Plantillas</button>
+        <button class="banner-tab" id="palmaresTabBtn">Palmarés</button>
         <button class="banner-tab" data-tab="soporte">Soporte</button>
       </nav>
       <div class="banner-search">
@@ -64,6 +65,14 @@
   </main>
 
   <section id="standings-container" class="standings-container"></section>
+
+  <section id="palmares-container" class="palmares-container">
+    <h2 class="section-title-dark">Palmarés</h2>
+    <select id="palmares-select" class="palmares-select">
+      <option value="">Selecciona un equipo...</option>
+    </select>
+    <div id="palmares-results" class="palmares-results"></div>
+  </section>
 
   <div id="team-modal" class="team-modal hidden">
     <div class="team-modal-content" id="team-modal-content">
