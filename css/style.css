@@ -174,10 +174,14 @@ body {
 .tip-detail { display: flex; gap: 8px; flex-wrap: wrap; color: rgba(255,255,255,0.7); }
 .tip-confianza { color: var(--white); font-weight: 700; }
 
-/* ===== PLANTILLAS (selector dentro del banner) ===== */
+/* ===== PLANTILLAS: selector con texto NEGRO en las opciones ===== */
 .team-select {
   width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.1); color: var(--white);
   border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; font-size: 0.85rem;
+}
+.team-select option {
+  color: #000;
+  background: #fff;
 }
 
 /* ===== SOPORTE ===== */
@@ -206,33 +210,83 @@ body {
 .form-draw { background: var(--gray-draw); }
 .form-loss { background: var(--red-loss); }
 
-/* ===== MODAL DE PLANTILLA (color por equipo) ===== */
+/* ===== PALMARÉS (debajo de la tabla, tema claro del sitio) ===== */
+.palmares-container {
+  padding: 24px 16px;
+  border-top: 2px solid #e9ecef;
+}
+.section-title-dark {
+  color: var(--navy);
+  font-size: 1.3rem;
+  margin-bottom: 12px;
+}
+.palmares-select {
+  padding: 10px 14px;
+  background: #fff;
+  color: var(--text-dark);
+  border: 1px solid var(--navy);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+.palmares-team-title {
+  color: var(--navy);
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+.palmares-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.palmares-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.palmares-label {
+  color: var(--text-dark);
+  font-size: 0.85rem;
+}
+.palmares-count {
+  color: var(--navy);
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+/* ===== MODAL DE PLANTILLA: SIEMPRE BLANCO, TEXTO NEGRO, NEGRITAS ===== */
 .team-modal {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   display: flex; align-items: center; justify-content: center; z-index: 999; padding: 16px;
 }
 .team-modal.hidden { display: none; }
 .team-modal-content {
+  background: #ffffff;
+  color: #000000;
   border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;
   max-height: 85vh; overflow-y: auto; position: relative;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
 }
 .close-modal {
-  position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.4);
-  color: #fff; border: none; border-radius: 50%; width: 32px; height: 32px;
+  position: absolute; top: 12px; right: 12px; background: #f1f3f5;
+  color: #000; border: 1px solid #ccc; border-radius: 50%; width: 32px; height: 32px;
   font-size: 1rem; cursor: pointer;
 }
-.dt-card { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; margin-top: 20px; }
+.dt-card { background: #f8f9fa; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; margin-top: 20px; }
 .dt-header { display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 8px; }
-.dt-name { color: #fff; font-weight: 700; }
-.dt-nationality { color: #ddd; font-size: 0.85rem; }
-.dt-sistema, .dt-estilo { font-size: 0.8rem; color: #eee; margin-top: 4px; line-height: 1.4; }
-.roster-position-title { color: #fff; font-size: 0.95rem; margin: 14px 0 6px; }
+.dt-name { color: #000; font-weight: 900; }
+.dt-nationality { color: #333; font-size: 0.85rem; }
+.dt-sistema, .dt-estilo { font-size: 0.8rem; color: #222; margin-top: 4px; line-height: 1.4; }
+.roster-position-title { color: #000; font-weight: 900; font-size: 0.95rem; margin: 14px 0 6px; }
 .roster-list { display: flex; flex-direction: column; gap: 6px; }
-.player-card { display: flex; gap: 12px; align-items: center; background: rgba(0,0,0,0.25); border-radius: 6px; padding: 8px 12px; font-size: 0.85rem; }
-.player-number { color: #ddd; min-width: 24px; font-weight: 700; }
-.player-name { flex: 1; color: #fff; }
-.player-info { color: #ddd; font-size: 0.78rem; }
+.player-card { display: flex; gap: 12px; align-items: center; background: #f8f9fa; border-radius: 6px; padding: 8px 12px; font-size: 0.85rem; }
+.player-number { color: #000; min-width: 24px; font-weight: 900; }
+.player-name { flex: 1; color: #000; font-weight: 700; }
+.player-info { color: #444; font-size: 0.78rem; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
@@ -250,7 +304,7 @@ body {
 }
 
 @media (min-width: 1400px) {
-  .mega-banner, .standings-container { max-width: 1500px; margin: 0 auto; }
+  .mega-banner, .standings-container, .palmares-container { max-width: 1500px; margin: 0 auto; }
   .app-title-3d { font-size: 2.8rem; }
   .standings-table { font-size: 1rem; }
 }
