@@ -1,13 +1,5 @@
 let teamNameMap = {};
 
-const TEAM_COLORS = {
-  AME: "#8a6d00", ATL: "#0d3d7a", ATA: "#7a0f0f", SLU: "#7a0f0f",
-  CAZ: "#014f86", JUA: "#1b5e20", CHI: "#7a0f1a", LEO: "#00423a",
-  MTY: "#0a2a5e", NEC: "#7a0f0f", PAC: "#0d3d7a", PUE: "#0d5c8a",
-  PUM: "#0f1a5e", QRO: "#263238", SAN: "#1b5e20", TIG: "#a34700",
-  TIJ: "#7a0f3a", TOL: "#8a1414"
-};
-
 async function checkConnection() {
   const statusEl = document.getElementById("connection-status");
   try {
@@ -19,10 +11,12 @@ async function checkConnection() {
     await loadStandings();
     await loadTips();
     await loadRosterTab();
+    await loadPalmaresSelector();
     await loadTeamNamesForSearch();
     setupBanner();
     setupCalendarSearch();
     setupModalClose();
+    setupPalmaresTab();
   } catch (err) {
     statusEl.textContent = "❌ Error de conexión: " + err.message;
     statusEl.classList.remove("status-loading");
@@ -33,7 +27,7 @@ async function checkConnection() {
 // ===== BANNER EXPANDIBLE =====
 function setupBanner() {
   const banner = document.getElementById("megaBanner");
-  const tabs = document.querySelectorAll(".banner-tab");
+  const tabs = document.querySelectorAll(".banner-tab[data-tab]");
 
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
@@ -60,6 +54,15 @@ function setupModalClose() {
     if (e.target.id === "team-modal") {
       document.getElementById("team-modal").classList.add("hidden");
     }
+  });
+}
+
+// ===== PALMARÉS: cierra el banner y baja hasta la sección =====
+function setupPalmaresTab() {
+  document.getElementById("palmaresTabBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("megaBanner").classList.remove("expanded");
+    document.getElementById("palmares-container").scrollIntoView({ behavior: "smooth" });
   });
 }
 
@@ -189,7 +192,7 @@ function setupCalendarSearch() {
   const banner = document.getElementById("megaBanner");
 
   function activateCalendarTab() {
-    document.querySelectorAll(".banner-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".banner-tab[data-tab]").forEach(t => t.classList.remove("active"));
     document.querySelector('[data-tab="calendar"]').classList.add("active");
     document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
     document.getElementById("calendar-container").classList.add("active");
@@ -304,7 +307,7 @@ async function loadFullCalendarView() {
   container.innerHTML = html;
 }
 
-// ===== PLANTILLAS (selector en banner → abre modal con color por equipo) =====
+// ===== PLANTILLAS (selector en banner → abre modal blanco con texto negro) =====
 async function loadRosterTab() {
   const select = document.getElementById("team-select");
   const { data, error } = await supabaseClient
@@ -331,10 +334,6 @@ async function loadRosterTab() {
 
 async function openTeamModal(abreviatura) {
   const modal = document.getElementById("team-modal");
-  const modalContent = document.getElementById("team-modal-content");
-  const color = TEAM_COLORS[abreviatura] || "#161b22";
-
-  modalContent.style.backgroundColor = color;
   modal.classList.remove("hidden");
 
   document.getElementById("dt-container").innerHTML = "Cargando DT...";
@@ -402,6 +401,72 @@ async function loadRoster(abreviatura) {
     });
     html += `</div>`;
   });
+  container.innerHTML = html;
+}
+
+// ===== PALMARÉS =====
+async function loadPalmaresSelector() {
+  const select = document.getElementById("palmares-select");
+  const { data, error } = await supabaseClient
+    .from("equipos")
+    .select("abreviatura, nombre")
+    .order("nombre");
+
+  if (error) return;
+
+  data.forEach(equipo => {
+    const option = document.createElement("option");
+    option.value = equipo.abreviatura;
+    option.textContent = equipo.nombre;
+    select.appendChild(option);
+  });
+
+  select.addEventListener("change", (e) => {
+    if (e.target.value) loadPalmares(e.target.value);
+    else document.getElementById("palmares-results").innerHTML = "";
+  });
+}
+
+async function loadPalmares(abreviatura) {
+  const container = document.getElementById("palmares-results");
+  container.innerHTML = "Cargando palmarés...";
+
+  const { data, error } = await supabaseClient
+    .from("palmares_equipo")
+    .select("*")
+    .eq("abreviatura", abreviatura)
+    .single();
+
+  if (error) {
+    container.textContent = "Error al cargar palmarés: " + error.message;
+    return;
+  }
+
+  const items = [
+    { label: "Liga MX", val: data.liga_mx },
+    { label: "Copa MX", val: data.copa_mx },
+    { label: "Concacaf / Gigantes", val: data.concacaf },
+    { label: "Leagues Cup", val: data.leagues_cup },
+    { label: "Interamericana / Sudamericana", val: data.interamericana },
+    { label: "Campeones Cup", val: data.campeones_cup },
+    { label: "Campeón de Campeones", val: data.campeon_campeones },
+    { label: "Supercopa MX", val: data.supercopa_mx },
+    { label: "Supercopa de la Liga MX", val: data.supercopa_liga_mx },
+  ];
+
+  const total = items.reduce((sum, i) => sum + i.val, 0);
+
+  let html = `<h3 class="palmares-team-title">${data.equipo_nombre} — Total: ${total}</h3>
+    <div class="palmares-grid">`;
+  items.forEach(i => {
+    html += `
+      <div class="palmares-item">
+        <span class="palmares-label">${i.label}</span>
+        <span class="palmares-count">${i.val}</span>
+      </div>
+    `;
+  });
+  html += "</div>";
   container.innerHTML = html;
 }
 
