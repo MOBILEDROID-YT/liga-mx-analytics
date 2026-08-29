@@ -96,9 +96,10 @@ async function loadStandings() {
       <tbody>
   `;
   tabla.forEach((row, i) => {
+    const ultimos5 = formaMap[row.abreviatura] || [];
     const dots = ultimos5.map(r => {
-  return r === 'G' ? '🟢' : r === 'E' ? '⚪' : '🔴';
-}).join(" ");
+      return r === 'G' ? '🟢' : r === 'E' ? '🟤' : '🔴';
+    }).join(" ");
 
     html += `
       <tr>
