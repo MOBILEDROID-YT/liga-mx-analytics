@@ -117,6 +117,19 @@ function getTeamName(abbreviation) {
   return getTeamByAbbreviation(abbreviation)?.nombre || abbreviation;
 }
 
+function canonicalTeamName(value) {
+  return normalizeText(value)
+    .replace(/\b(club|fc|futbol|football|deportivo|cd|cf|de)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sameTeamName(firstName, secondName) {
+  const first = canonicalTeamName(firstName);
+  const second = canonicalTeamName(secondName);
+  return Boolean(first && second && (first === second || first.includes(second) || second.includes(first)));
+}
+
 function matchContainsTeam(match, abbreviation) {
   if (!abbreviation) return false;
   return getTeamAbbreviation(match.local) === abbreviation || getTeamAbbreviation(match.visitante) === abbreviation;
@@ -298,7 +311,7 @@ function findHistoryMatch(row) {
   const rowVisitor = normalizeText(row.visitante);
   const rowJornada = numericValue(row.jornada, 0);
   return appState.matches.find((match) => {
-    const sameTeams = normalizeText(match.local) === rowLocal && normalizeText(match.visitante) === rowVisitor;
+    const sameTeams = sameTeamName(match.local, rowLocal) && sameTeamName(match.visitante, rowVisitor);
     const sameJornada = !rowJornada || numericValue(match.jornada, 0) === rowJornada;
     return sameTeams && sameJornada;
   });
@@ -329,11 +342,9 @@ function getPredictedOutcome(row, match) {
   if (/(?:\bx2\b|empate.*visitante|visitante.*empate)/.test(text)) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b12\b|local.*visitante|visitante.*local)/.test(text)) return ['1', '2'].includes(outcome) ? 'acertado' : 'fallado';
 
-  const localName = normalizeText(match.local);
-  const visitorName = normalizeText(match.visitante);
-  const pickedLocal = prediction === '1' || prediction === 'local' || prediction === localName || /(?:gana|victoria|triunfo).*local|local.*(?:gana|victoria|triunfo)/.test(text);
+  const pickedLocal = prediction === '1' || prediction === 'local' || sameTeamName(prediction, match.local) || /(?:gana|victoria|triunfo).*local|local.*(?:gana|victoria|triunfo)/.test(text);
   const pickedDraw = prediction === 'x' || prediction === 'empate' || /\bempate\b/.test(text);
-  const pickedVisitor = prediction === '2' || prediction === 'visitante' || prediction === visitorName || /(?:gana|victoria|triunfo).*visitante|visitante.*(?:gana|victoria|triunfo)/.test(text);
+  const pickedVisitor = prediction === '2' || prediction === 'visitante' || sameTeamName(prediction, match.visitante) || /(?:gana|victoria|triunfo).*visitante|visitante.*(?:gana|victoria|triunfo)/.test(text);
   if (pickedLocal) return outcome === '1' ? 'acertado' : 'fallado';
   if (pickedDraw) return outcome === 'x' ? 'acertado' : 'fallado';
   if (pickedVisitor) return outcome === '2' ? 'acertado' : 'fallado';
@@ -746,7 +757,7 @@ function renderHistory() {
   }
 
   const notice = appState.historySource === 'fallback'
-    ? '<div class="info-state">El historial está listo visualmente. Ejecuta el SQL incluido para guardar acertados y fallados.</div>'
+    ? '<div class="info-state">El historial se calcula con los marcadores de Supabase. Ejecuta el SQL incluido solo si quieres guardar resultados manuales.</div>'
     : '';
 
   listContainer.innerHTML = notice + historyRows.map((row) => {
