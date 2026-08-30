@@ -1,10 +1,10 @@
-const cacheName = 'liga-mx-analytics-shell-v4';
+const cacheName = 'liga-mx-analytics-shell-v5';
 const appShell = [
   './',
   './index.html',
-  './css/style.css?v=4',
+  './css/style.css?v=5',
   './js/config.js',
-  './js/app.js?v=4',
+  './js/app.js?v=5',
   './manifest.webmanifest',
   './assets/icon.svg'
 ];
@@ -44,4 +44,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
