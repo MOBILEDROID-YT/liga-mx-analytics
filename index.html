@@ -3,88 +3,340 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071d3d">
+  <meta name="description" content="Liga MX Analytics: datos, tips y herramientas para analizar cada jornada.">
   <title>Liga MX Analytics</title>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
+  <header class="app-header">
+    <div class="topbar page-container">
+      <a class="brand" href="#inicio" data-view-link="inicio" aria-label="Ir al inicio">
+        <span class="brand-ball" aria-hidden="true"></span>
+        <span class="brand-copy">
+          <strong>LIGA MX</strong>
+          <strong>ANALYTICS</strong>
+          <small>DATOS PARA ENTENDER EL PARTIDO</small>
+        </span>
+      </a>
 
-  <header class="mega-banner" id="megaBanner">
-    <div class="banner-topbar">
-      <div class="banner-title">
-        <h1 class="app-title-3d">LIGA MX<br>ANALYTICS</h1>
-      </div>
-      <nav class="banner-tabs">
-        <button class="banner-tab active" data-tab="calendar">Calendario</button>
-        <button class="banner-tab" data-tab="tips" id="tipsTabBtn">Tips</button>
-        <button class="banner-tab" data-tab="roster">Plantillas</button>
-        <button class="banner-tab" id="palmaresTabBtn">Palmarés</button>
-        <button class="banner-tab" data-tab="soporte">Soporte</button>
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Abrir menÃº" aria-expanded="false">â˜°</button>
+
+      <nav id="main-nav" class="main-nav" aria-label="NavegaciÃ³n principal">
+        <a class="nav-link active" href="#inicio" data-view-link="inicio">Inicio</a>
+        <a class="nav-link" href="#calendario" data-view-link="calendario">Calendario</a>
+        <a class="nav-link" href="#tips" data-view-link="tips">Tips</a>
+        <a class="nav-link" href="#equipos" data-view-link="equipos">Equipos</a>
+        <a class="nav-link" href="#analisis" data-view-link="analisis">AnÃ¡lisis</a>
+        <a class="nav-link" href="#herramientas" data-view-link="herramientas">Herramientas</a>
       </nav>
-      <div class="banner-search">
-        <input type="text" id="team-search-input" list="team-list" placeholder="Buscar equipo...">
-        <datalist id="team-list"></datalist>
-        <button id="search-team-btn">🔍</button>
-      </div>
-    </div>
 
-    <div class="banner-expand" id="bannerExpand">
-
-      <div id="calendar-container" class="banner-panel active">
-        <button id="full-calendar-btn" class="full-calendar-btn">Ver calendario completo</button>
-        <div id="calendar-results" class="calendar-results">
-          <p class="calendar-empty">Busca un equipo arriba o revisa el calendario completo.</p>
+      <div class="header-actions">
+        <div class="global-search">
+          <input id="team-search-input" type="search" list="team-list" placeholder="Buscar equipo..." autocomplete="off">
+          <datalist id="team-list"></datalist>
+          <button id="search-team-btn" type="button" aria-label="Buscar equipo">âŒ•</button>
         </div>
+        <button id="install-app-btn" class="install-btn hidden" type="button">Instalar app</button>
       </div>
-
-      <div id="tips-container" class="banner-panel"></div>
-
-      <div id="roster-container" class="banner-panel">
-        <select id="team-select" class="team-select">
-          <option value="">Selecciona un equipo...</option>
-        </select>
-        <p class="calendar-empty">Elige un equipo para ver su director técnico y plantilla.</p>
-      </div>
-
-      <div id="soporte-container" class="banner-panel">
-        <h3 class="soporte-title">Soporte y Contacto</h3>
-        <p class="soporte-text">
-          ¿Tienes dudas, encontraste un error en los datos, o quieres reportar algo? Escríbenos.
-        </p>
-        <div class="soporte-item">📧 Correo: <strong>contacto@ligamxanalytics.com</strong></div>
-        <div class="soporte-item">🐦 Redes: <strong>@LigaMXAnalytics</strong></div>
-        <p class="soporte-note">*Actualiza estos datos de contacto por los tuyos reales.</p>
-      </div>
-
     </div>
   </header>
 
-  <main class="status-container">
-    <div id="connection-status" class="status-card status-loading">
-      Verificando conexión con la base de datos...
+  <main>
+    <div class="page-container status-container">
+      <div id="connection-status" class="status-card status-loading">Verificando conexiÃ³n con Supabase...</div>
+      <span id="last-updated" class="last-updated">Sincronizando datos...</span>
     </div>
+
+    <section id="view-inicio" class="app-view active" data-view="inicio">
+      <div class="page-container">
+        <div class="home-hero">
+          <div class="hero-copy">
+            <span class="eyebrow">LIGA MX / CENTRO DE ANÃLISIS</span>
+            <h1>Tu jornada, explicada con datos.</h1>
+            <p>Consulta partidos, entiende los tips y arma tu quiniela con informaciÃ³n clara, actualizada y sin esconder los resultados.</p>
+            <div class="hero-actions">
+              <button class="primary-btn" type="button" data-action="set-view" data-view="calendario">Ver prÃ³ximos partidos</button>
+              <button class="ghost-btn" type="button" data-action="set-view" data-view="tips">Explorar tips</button>
+            </div>
+            <div class="favorite-strip">
+              <span class="micro-label">MIS EQUIPOS</span>
+              <div id="home-favorite-teams" class="favorite-chips"></div>
+            </div>
+          </div>
+          <div class="hero-board">
+            <div class="blueprint-lines" aria-hidden="true"></div>
+            <span class="board-label">JORNADA ACTUAL</span>
+            <strong id="home-jornada" class="board-value">â€”</strong>
+            <span id="home-hero-caption" class="board-caption">Preparando el centro de partido...</span>
+            <div class="board-orbit" aria-hidden="true"><span></span></div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card stat-green">
+            <span class="stat-label">Equipos siguiendo</span>
+            <strong id="home-favorites-count">0</strong>
+            <span class="stat-note">Guardados en este dispositivo</span>
+          </article>
+          <article class="stat-card stat-blue">
+            <span class="stat-label">Partidos prÃ³ximos</span>
+            <strong id="home-upcoming-count">0</strong>
+            <span class="stat-note">Con informaciÃ³n disponible</span>
+          </article>
+          <article class="stat-card stat-red">
+            <span class="stat-label">Tips publicados</span>
+            <strong id="home-tips-count">0</strong>
+            <span class="stat-note">En la jornada mÃ¡s reciente</span>
+          </article>
+          <article class="stat-card stat-yellow">
+            <span class="stat-label">Historial resuelto</span>
+            <strong id="home-history-count">0%</strong>
+            <span class="stat-note">Acierto con muestra disponible</span>
+          </article>
+        </div>
+
+        <div class="home-grid">
+          <article class="surface-card">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">PRÃ“XIMAMENTE</span>
+                <h2>Los siguientes partidos</h2>
+              </div>
+              <button class="text-btn" type="button" data-action="set-view" data-view="calendario">Ver todos</button>
+            </div>
+            <div id="home-next-matches" class="match-list"></div>
+          </article>
+          <article class="surface-card">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">LECTURA RÃPIDA</span>
+                <h2>Tips de la jornada</h2>
+              </div>
+              <button class="text-btn" type="button" data-action="set-view" data-view="tips">Ver todos</button>
+            </div>
+            <div id="home-tips-preview" class="mini-tip-list"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-calendario" class="app-view" data-view="calendario">
+      <div class="page-container">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">PARTIDOS</span>
+            <h1>Calendario inteligente</h1>
+            <p>Filtra la jornada completa o revisa Ãºnicamente los equipos que sigues.</p>
+          </div>
+          <div class="heading-decoration stadium-mini" aria-hidden="true"></div>
+        </div>
+        <div class="toolbar-card">
+          <label class="field-label" for="calendar-filter">Mostrar</label>
+          <select id="calendar-filter" class="select-control">
+            <option value="all">Todos los partidos</option>
+            <option value="future">Solo prÃ³ximos</option>
+            <option value="favorites">Mis equipos</option>
+          </select>
+          <label class="field-label" for="calendar-team-filter">Equipo</label>
+          <select id="calendar-team-filter" class="select-control">
+            <option value="">Todos los equipos</option>
+          </select>
+          <button id="full-calendar-btn" class="secondary-btn" type="button">Restablecer filtros</button>
+        </div>
+        <div id="calendar-results" class="calendar-board"></div>
+      </div>
+    </section>
+
+    <section id="view-tips" class="app-view" data-view="tips">
+      <div class="page-container">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">PREDICCIONES</span>
+            <h1>Tips con contexto</h1>
+            <p>Una recomendaciÃ³n vale mÃ¡s cuando puedes entenderla y despuÃ©s comprobarla.</p>
+          </div>
+          <div class="confidence-legend">
+            <span><i class="legend-dot green"></i>Base</span>
+            <span><i class="legend-dot yellow"></i>Zona gris</span>
+            <span><i class="legend-dot red"></i>Sorpresa</span>
+          </div>
+        </div>
+        <div class="subnav-card">
+          <button class="subnav-btn active" type="button" data-tips-panel="current">Tips actuales</button>
+          <button class="subnav-btn" type="button" data-tips-panel="history">Historial transparente</button>
+          <select id="tips-filter" class="select-control compact-select">
+            <option value="all">Todas las categorÃ­as</option>
+            <option value="base">Base</option>
+            <option value="zona_gris">Zona Gris</option>
+            <option value="sorpresa">Sorpresa</option>
+          </select>
+        </div>
+        <div id="tips-current-panel" class="tips-panel active">
+          <div id="tips-container" class="tip-grid"></div>
+        </div>
+        <div id="tips-history-panel" class="tips-panel">
+          <div id="tips-history-metrics" class="history-metrics"></div>
+          <div id="tips-history-container" class="history-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-equipos" class="app-view" data-view="equipos">
+      <div class="page-container">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">EQUIPOS</span>
+            <h1>La liga en una sola vista</h1>
+            <p>Tabla, plantillas, palmarÃ©s y tus equipos favoritos en un mismo espacio.</p>
+          </div>
+          <div class="fans-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
+        <section id="standings-container" class="standings-block"></section>
+        <div class="teams-tools-grid">
+          <article class="surface-card">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">PERSONALIZA</span>
+                <h2>Mis equipos</h2>
+              </div>
+              <span class="card-icon">â˜…</span>
+            </div>
+            <p class="helper-text">Guarda tus clubes favoritos. Se conserva Ãºnicamente en este navegador.</p>
+            <div id="favorite-team-selector" class="favorite-team-selector"></div>
+            <div id="favorite-team-list" class="favorite-team-list"></div>
+          </article>
+          <article class="surface-card">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">PERFILES</span>
+                <h2>Plantillas y palmarÃ©s</h2>
+              </div>
+              <span class="card-icon">â—†</span>
+            </div>
+            <label class="field-label" for="team-select">Ver plantilla</label>
+            <select id="team-select" class="select-control">
+              <option value="">Selecciona un equipo...</option>
+            </select>
+            <label class="field-label spaced-label" for="palmares-select">Ver palmarÃ©s</label>
+            <select id="palmares-select" class="select-control">
+              <option value="">Selecciona un equipo...</option>
+            </select>
+            <div id="palmares-results" class="palmares-results"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-analisis" class="app-view" data-view="analisis">
+      <div class="page-container">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">ANÃLISIS</span>
+            <h1>Compara antes de decidir</h1>
+            <p>Enfrenta dos equipos con sus nÃºmeros disponibles y revisa la racha activa de la liga.</p>
+          </div>
+          <div class="radar-decoration" aria-hidden="true"><span></span></div>
+        </div>
+        <article class="surface-card comparison-card">
+          <div class="comparison-controls">
+            <div>
+              <label class="field-label" for="compare-team-a">Equipo A</label>
+              <select id="compare-team-a" class="select-control"></select>
+            </div>
+            <div class="versus-mark">VS</div>
+            <div>
+              <label class="field-label" for="compare-team-b">Equipo B</label>
+              <select id="compare-team-b" class="select-control"></select>
+            </div>
+          </div>
+          <div id="comparison-results" class="comparison-results"></div>
+        </article>
+        <article class="surface-card">
+          <div class="card-heading">
+            <div>
+              <span class="eyebrow">SEGUIMIENTO</span>
+              <h2>Rachas activas</h2>
+            </div>
+            <span class="live-chip">â— DATOS DISPONIBLES</span>
+          </div>
+          <div id="active-streaks" class="streak-grid"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-herramientas" class="app-view" data-view="herramientas">
+      <div class="page-container">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">HERRAMIENTAS</span>
+            <h1>Juega con el escenario</h1>
+            <p>Construye tu quiniela y simula resultados sin alterar la tabla real.</p>
+          </div>
+          <div class="tool-decoration" aria-hidden="true"><span>1</span><span>X</span><span>2</span></div>
+        </div>
+
+        <article class="surface-card tool-card">
+          <div class="card-heading tool-heading">
+            <div>
+              <span class="eyebrow">QUINIELA</span>
+              <h2>Arma tu combinaciÃ³n</h2>
+            </div>
+            <div class="tool-controls">
+              <label class="field-label" for="quiniela-size">Partidos</label>
+              <select id="quiniela-size" class="select-control compact-select">
+                <option value="14">14</option>
+                <option value="21">21</option>
+              </select>
+              <button id="quiniela-reset" class="text-btn" type="button">Limpiar</button>
+            </div>
+          </div>
+          <div class="quiniela-summary">
+            <div><span>Dobles</span><strong id="quiniela-doubles">0</strong></div>
+            <div><span>Triples</span><strong id="quiniela-triples">0</strong></div>
+            <div><span>Combinaciones</span><strong id="quiniela-combinations">1</strong></div>
+            <label><span>Importe por combinaciÃ³n</span><input id="quiniela-base-amount" type="number" min="0" step="0.01" value="1"></label>
+            <div><span>Estimado</span><strong id="quiniela-total-cost">$1.00</strong></div>
+          </div>
+          <p class="tool-note">La cantidad de combinaciones se calcula como dobles Ã— triples. El importe es editable y no representa una tarifa oficial.</p>
+          <div id="quiniela-matches" class="quiniela-list"></div>
+        </article>
+
+        <article class="surface-card tool-card">
+          <div class="card-heading tool-heading">
+            <div>
+              <span class="eyebrow">SIMULADOR</span>
+              <h2>Â¿QuÃ© necesita cada equipo?</h2>
+            </div>
+            <button id="simulator-reset" class="text-btn" type="button">Restablecer</button>
+          </div>
+          <div class="simulator-callout"><strong id="simulator-cutoff">â€”</strong><span>puntos marcan actualmente el corte del octavo lugar.</span></div>
+          <div id="simulator-matches" class="simulator-matches"></div>
+          <div id="simulator-results" class="simulator-results"></div>
+        </article>
+      </div>
+    </section>
   </main>
 
-  <section id="standings-container" class="standings-container"></section>
-
-  <section id="palmares-container" class="palmares-container">
-    <h2 class="section-title-dark">Palmarés</h2>
-    <select id="palmares-select" class="palmares-select">
-      <option value="">Selecciona un equipo...</option>
-    </select>
-    <div id="palmares-results" class="palmares-results"></div>
-  </section>
-
-  <div id="team-modal" class="team-modal hidden">
-    <div class="team-modal-content" id="team-modal-content">
-      <button id="close-modal" class="close-modal">✕</button>
+  <div id="team-modal" class="team-modal hidden" role="dialog" aria-modal="true" aria-label="Perfil del equipo">
+    <div class="team-modal-content">
+      <button id="close-modal" class="close-modal" type="button" aria-label="Cerrar">Ã—</button>
       <div id="dt-container"></div>
       <div id="roster-list-container"></div>
     </div>
   </div>
 
-  <!-- Librería oficial de Supabase vía CDN -->
+  <footer class="app-footer">
+    <div class="page-container footer-inner">
+      <span>LIGA MX ANALYTICS</span>
+      <span>Datos para leer mejor el partido.</span>
+      <a href="#tips" data-view-link="tips">Revisar transparencia</a>
+    </div>
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

@@ -1,0 +1,20 @@
+{
+  "name": "Liga MX Analytics",
+  "short_name": "Liga MX Analytics",
+  "description": "Datos, tips y herramientas para entender cada jornada de la Liga MX.",
+  "start_url": "./index.html#inicio",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#071d3d",
+  "theme_color": "#071d3d",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

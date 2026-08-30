@@ -1,472 +1,999 @@
-let teamNameMap = {};
+const appState = {
+  view: window.location.hash.replace('#', '') || 'inicio',
+  teams: [],
+  standings: [],
+  matches: [],
+  tips: [],
+  history: [],
+  palmares: [],
+  favorites: JSON.parse(localStorage.getItem('lma-favorite-teams') || '[]'),
+  historySource: 'fallback',
+  calendarFilter: 'all',
+  calendarTeam: '',
+  compareA: '',
+  compareB: '',
+  quinielaSize: 14,
+  quinielaPicks: {},
+  simulatorPicks: {},
+  deferredInstallPrompt: null,
+  lastUpdatedAt: null
+};
 
-async function checkConnection() {
-  const statusEl = document.getElementById("connection-status");
+const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas'];
+
+const categoryMeta = {
+  base: { label: 'Base', className: 'tip-base', dot: 'green' },
+  zona_gris: { label: 'Zona Gris', className: 'tip-gris', dot: 'yellow' },
+  sorpresa: { label: 'Sorpresa', className: 'tip-sorpresa', dot: 'red' }
+};
+
+const $ = (id) => document.getElementById(id);
+
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function normalizeText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function numericValue(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function formatDate(value, options = {}) {
+  if (!value) return 'Fecha por confirmar';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
+  return new Intl.DateTimeFormat('es-MX', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    ...options
+  }).format(date);
+}
+
+function formatShortDate(value) {
+  return formatDate(value, { year: undefined, hour: undefined, minute: undefined });
+}
+
+function isFinalMatch(match) {
+  return String(match?.estado || '').toLowerCase() === 'finalizado';
+}
+
+function isLiveMatch(match) {
+  return String(match?.estado || '').toLowerCase() === 'en_vivo';
+}
+
+function getTeamByAbbreviation(abbreviation) {
+  return appState.teams.find((team) => team.abreviatura === abbreviation);
+}
+
+function getTeamByName(name) {
+  const normalizedName = normalizeText(name);
+  return appState.teams.find((team) => normalizeText(team.nombre) === normalizedName);
+}
+
+function getTeamAbbreviation(name) {
+  return getTeamByName(name)?.abreviatura || '';
+}
+
+function getTeamName(abbreviation) {
+  return getTeamByAbbreviation(abbreviation)?.nombre || abbreviation;
+}
+
+function matchContainsTeam(match, abbreviation) {
+  if (!abbreviation) return false;
+  return getTeamAbbreviation(match.local) === abbreviation || getTeamAbbreviation(match.visitante) === abbreviation;
+}
+
+function getCurrentJornada() {
+  const jornadas = [...appState.tips, ...appState.matches]
+    .map((item) => numericValue(item.jornada, 0))
+    .filter(Boolean);
+  return jornadas.length ? Math.max(...jornadas) : 'â€”';
+}
+
+function getUpcomingMatches() {
+  return appState.matches
+    .filter((match) => !isFinalMatch(match))
+    .sort((first, second) => new Date(first.fecha_hora_mx || 0) - new Date(second.fecha_hora_mx || 0));
+}
+
+function getFinishedMatchesForTeam(teamName) {
+  const normalizedTeam = normalizeText(teamName);
+  return appState.matches
+    .filter((match) => isFinalMatch(match) && (normalizeText(match.local) === normalizedTeam || normalizeText(match.visitante) === normalizedTeam))
+    .sort((first, second) => new Date(second.fecha_hora_mx || 0) - new Date(first.fecha_hora_mx || 0));
+}
+
+function getTeamResult(match, teamName) {
+  const isLocal = normalizeText(match.local) === normalizeText(teamName);
+  const goalsFor = isLocal ? numericValue(match.goles_local) : numericValue(match.goles_visitante);
+  const goalsAgainst = isLocal ? numericValue(match.goles_visitante) : numericValue(match.goles_local);
+  if (goalsFor > goalsAgainst) return 'G';
+  if (goalsFor === goalsAgainst) return 'E';
+  return 'P';
+}
+
+function getTeamForm(teamName, limit = 5) {
+  return getFinishedMatchesForTeam(teamName).slice(0, limit).map((match) => getTeamResult(match, teamName));
+}
+
+function renderFormDots(teamName) {
+  const form = getTeamForm(teamName);
+  if (!form.length) return '<span class="form-empty">Sin datos</span>';
+  return form.map((result) => `<span class="form-pill form-${result === 'G' ? 'win' : result === 'E' ? 'draw' : 'loss'}">${result}</span>`).join('');
+}
+
+function getMatchOutcome(match) {
+  if (!isFinalMatch(match)) return '';
+  const localGoals = numericValue(match.goles_local);
+  const visitorGoals = numericValue(match.goles_visitante);
+  if (localGoals > visitorGoals) return '1';
+  if (localGoals === visitorGoals) return 'X';
+  return '2';
+}
+
+function getScoreLabel(match) {
+  if (isLiveMatch(match)) return 'EN VIVO';
+  if (isFinalMatch(match)) return `${numericValue(match.goles_local)} - ${numericValue(match.goles_visitante)}`;
+  return formatDate(match.fecha_hora_mx);
+}
+
+function getScoreClass(match) {
+  if (isLiveMatch(match)) return 'score-live';
+  if (isFinalMatch(match)) return 'score-final';
+  return 'score-pending';
+}
+
+function setConnectionStatus(type, message) {
+  const status = $('connection-status');
+  if (!status) return;
+  status.className = `status-card status-${type}`;
+  status.textContent = message;
+}
+
+function setLastUpdated() {
+  appState.lastUpdatedAt = new Date();
+  const element = $('last-updated');
+  if (element) element.textContent = `Ãšltima consulta: ${formatDate(appState.lastUpdatedAt)}`;
+}
+
+async function initializeApp() {
+  bindStaticEvents();
+  setView(validViews.includes(appState.view) ? appState.view : 'inicio', false);
+  setConnectionStatus('loading', 'Verificando conexiÃ³n con Supabase...');
+
   try {
-    const { error } = await supabaseClient.auth.getSession();
-    if (error) throw error;
-    statusEl.textContent = "✅ Conectado a Supabase correctamente";
-    statusEl.classList.remove("status-loading");
-    statusEl.classList.add("status-ok");
-    await loadStandings();
-    await loadTips();
-    await loadRosterTab();
-    await loadPalmaresSelector();
-    await loadTeamNamesForSearch();
-    setupBanner();
-    setupCalendarSearch();
-    setupModalClose();
-    setupPalmaresTab();
-  } catch (err) {
-    statusEl.textContent = "❌ Error de conexión: " + err.message;
-    statusEl.classList.remove("status-loading");
-    statusEl.classList.add("status-error");
-  }
-}
+    const { error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) throw sessionError;
 
-// ===== BANNER EXPANDIBLE =====
-function setupBanner() {
-  const banner = document.getElementById("megaBanner");
-  const tabs = document.querySelectorAll(".banner-tab[data-tab]");
+    const results = await Promise.allSettled([
+      loadTeams(),
+      loadStandings(),
+      loadMatches(),
+      loadTips(),
+      loadPalmares()
+    ]);
 
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      tabs.forEach(t => t.classList.remove("active"));
-      document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
-      tab.classList.add("active");
-      const panel = document.getElementById(tab.dataset.tab + "-container");
-      if (panel) panel.classList.add("active");
-      banner.classList.add("expanded");
-    });
-  });
+    await loadHistory();
+    renderAll();
+    setLastUpdated();
 
-  document.querySelector(".banner-topbar").addEventListener("click", (e) => {
-    if (e.target.closest(".banner-tab") || e.target.closest(".banner-search")) return;
-    banner.classList.toggle("expanded");
-  });
-}
-
-function setupModalClose() {
-  document.getElementById("close-modal").addEventListener("click", () => {
-    document.getElementById("team-modal").classList.add("hidden");
-  });
-  document.getElementById("team-modal").addEventListener("click", (e) => {
-    if (e.target.id === "team-modal") {
-      document.getElementById("team-modal").classList.add("hidden");
+    const failedRequests = results.filter((result) => result.status === 'rejected');
+    if (failedRequests.length) {
+      setConnectionStatus('error', 'Conectado, pero algunas secciones necesitan revisiÃ³n.');
+    } else {
+      setConnectionStatus('ok', 'Conectado a Supabase correctamente');
     }
-  });
+  } catch (error) {
+    setConnectionStatus('error', `Error de conexiÃ³n: ${error.message}`);
+    renderAll();
+  }
+
+  registerPwa();
 }
 
-// ===== PALMARÉS: cierra el banner y baja hasta la sección =====
-function setupPalmaresTab() {
-  document.getElementById("palmaresTabBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    document.getElementById("megaBanner").classList.remove("expanded");
-    document.getElementById("palmares-container").scrollIntoView({ behavior: "smooth" });
-  });
+async function loadTeams() {
+  const { data, error } = await supabaseClient
+    .from('equipos')
+    .select('*')
+    .order('nombre');
+  if (error) throw error;
+  appState.teams = safeArray(data);
 }
 
-// ===== TABLA DE POSICIONES + FORMA RECIENTE =====
 async function loadStandings() {
-  const container = document.getElementById("standings-container");
-
-  const [{ data: tabla, error: err1 }, { data: forma, error: err2 }] = await Promise.all([
-    supabaseClient.from("tabla_posiciones").select("*"),
-    supabaseClient.from("forma_reciente").select("*")
-  ]);
-
-  if (err1) {
-    container.textContent = "Error al cargar la tabla: " + err1.message;
-    return;
-  }
-
-  const formaMap = {};
-  if (!err2 && forma) {
-    forma.forEach(f => { formaMap[f.abreviatura] = f.ultimos5; });
-  }
-
-  let html = `
-    <table class="standings-table">
-      <thead>
-        <tr>
-          <th>#</th><th>Club</th><th>PJ</th><th>G</th><th>E</th><th>P</th>
-          <th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Últimos 5</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-  tabla.forEach((row, i) => {
-    const ultimos5 = formaMap[row.abreviatura] || [];
-    const dots = ultimos5.map(r => {
-      return r === 'G' ? '🟢' : r === 'E' ? '🟤' : '🔴';
-    }).join(" ");
-
-    html += `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${row.club}</td>
-        <td>${row.pj}</td>
-        <td>${row.g}</td>
-        <td>${row.e_}</td>
-        <td>${row.p_}</td>
-        <td>${row.gf}</td>
-        <td>${row.gc}</td>
-        <td>${row.dg}</td>
-        <td><strong>${row.pts}</strong></td>
-        <td class="form-cell">${dots}</td>
-      </tr>
-    `;
+  const { data, error } = await supabaseClient
+    .from('tabla_posiciones')
+    .select('*');
+  if (error) throw error;
+  appState.standings = safeArray(data).sort((first, second) => {
+    return numericValue(second.pts) - numericValue(first.pts)
+      || numericValue(second.dg) - numericValue(first.dg)
+      || numericValue(second.gf) - numericValue(first.gf);
   });
-  html += "</tbody></table>";
-  container.innerHTML = html;
 }
 
-// ===== TIPS =====
+async function loadMatches() {
+  const { data, error } = await supabaseClient
+    .from('calendario_completo')
+    .select('*');
+  if (error) throw error;
+  appState.matches = safeArray(data).sort((first, second) => {
+    return new Date(first.fecha_hora_mx || 0) - new Date(second.fecha_hora_mx || 0);
+  });
+}
+
 async function loadTips() {
-  const container = document.getElementById("tips-container");
   const { data, error } = await supabaseClient
-    .from("tips_completos")
-    .select("*");
+    .from('tips_completos')
+    .select('*');
+  if (error) throw error;
+  appState.tips = safeArray(data).sort((first, second) => numericValue(second.jornada) - numericValue(first.jornada));
+}
 
-  if (error) {
-    container.textContent = "Error al cargar tips: " + error.message;
+async function loadHistory() {
+  const { data, error } = await supabaseClient
+    .from('tips_historial')
+    .select('*')
+    .order('jornada', { ascending: false });
+
+  if (!error && data) {
+    appState.history = safeArray(data);
+    appState.historySource = 'tips_historial';
     return;
   }
-  if (!data || data.length === 0) {
-    container.innerHTML = "";
-    return;
-  }
 
-  const jornadaActual = Math.max(...data.map(t => t.jornada));
-  const tipsJornada = data.filter(t => t.jornada === jornadaActual);
-  document.getElementById("tipsTabBtn").textContent = `Tips Jornada ${jornadaActual}`;
+  appState.history = appState.tips.map((tip) => ({ ...tip, resultado: 'pendiente' }));
+  appState.historySource = 'fallback';
+}
 
-  const categorias = [
-    { key: "base", label: "🟢 Base", clase: "tip-base" },
-    { key: "zona_gris", label: "🟡 Zona Gris", clase: "tip-gris" },
-    { key: "sorpresa", label: "🔴 Sorpresa", clase: "tip-sorpresa" }
-  ];
+async function loadPalmares() {
+  const { data, error } = await supabaseClient
+    .from('palmares_equipo')
+    .select('*');
+  if (error) throw error;
+  appState.palmares = safeArray(data);
+}
 
-  let html = `<div class="tips-scroll">`;
-  categorias.forEach(cat => {
-    const items = tipsJornada.filter(t => t.categoria === cat.key);
-    items.forEach(t => {
-      html += `
-        <div class="tip-card ${cat.clase}">
-          <div class="tip-match">${t.local} vs ${t.visitante}</div>
-          <div class="tip-detail">
-            <span class="tip-tipo">${t.tipo_apuesta}</span>
-            <span class="tip-prediccion">${t.prediccion}</span>
-            <span class="tip-confianza">${t.confianza}%</span>
-          </div>
-        </div>
-      `;
+function bindStaticEvents() {
+  document.addEventListener('click', handleDocumentClick);
+
+  $('mobile-menu-btn')?.addEventListener('click', () => {
+    const nav = $('main-nav');
+    const button = $('mobile-menu-btn');
+    const isOpen = nav?.classList.toggle('open');
+    button?.setAttribute('aria-expanded', String(Boolean(isOpen)));
+  });
+
+  $('search-team-btn')?.addEventListener('click', searchTeam);
+  $('team-search-input')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') searchTeam();
+  });
+
+  $('calendar-filter')?.addEventListener('change', (event) => {
+    appState.calendarFilter = event.target.value;
+    renderCalendar();
+  });
+
+  $('calendar-team-filter')?.addEventListener('change', (event) => {
+    appState.calendarTeam = event.target.value;
+    renderCalendar();
+  });
+
+  $('full-calendar-btn')?.addEventListener('click', () => {
+    appState.calendarFilter = 'all';
+    appState.calendarTeam = '';
+    if ($('calendar-filter')) $('calendar-filter').value = 'all';
+    if ($('calendar-team-filter')) $('calendar-team-filter').value = '';
+    renderCalendar();
+  });
+
+  $('tips-filter')?.addEventListener('change', renderTips);
+
+  document.querySelectorAll('[data-tips-panel]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const panel = button.dataset.tipsPanel;
+      document.querySelectorAll('[data-tips-panel]').forEach((item) => item.classList.toggle('active', item === button));
+      $('tips-current-panel')?.classList.toggle('active', panel === 'current');
+      $('tips-history-panel')?.classList.toggle('active', panel === 'history');
     });
   });
-  html += "</div>";
-  container.innerHTML = html;
-}
 
-// ===== BUSCADOR DE CALENDARIO =====
-async function loadTeamNamesForSearch() {
-  const { data, error } = await supabaseClient
-    .from("equipos")
-    .select("abreviatura, nombre")
-    .order("nombre");
-  if (error) return;
+  $('team-select')?.addEventListener('change', (event) => {
+    if (event.target.value) openTeamModal(event.target.value);
+  });
 
-  const datalist = document.getElementById("team-list");
-  data.forEach(t => {
-    teamNameMap[t.nombre.toLowerCase()] = { abv: t.abreviatura, nombre: t.nombre };
-    const option = document.createElement("option");
-    option.value = t.nombre;
-    datalist.appendChild(option);
+  $('palmares-select')?.addEventListener('change', (event) => renderPalmares(event.target.value));
+  $('compare-team-a')?.addEventListener('change', (event) => {
+    appState.compareA = event.target.value;
+    renderComparison();
+  });
+  $('compare-team-b')?.addEventListener('change', (event) => {
+    appState.compareB = event.target.value;
+    renderComparison();
+  });
+
+  $('quiniela-size')?.addEventListener('change', (event) => {
+    appState.quinielaSize = numericValue(event.target.value, 14);
+    renderQuiniela();
+  });
+
+  $('quiniela-base-amount')?.addEventListener('input', renderQuiniela);
+  $('quiniela-reset')?.addEventListener('click', () => {
+    appState.quinielaPicks = {};
+    renderQuiniela();
+  });
+
+  $('simulator-reset')?.addEventListener('click', () => {
+    appState.simulatorPicks = {};
+    renderSimulator();
+  });
+
+  $('close-modal')?.addEventListener('click', closeTeamModal);
+  $('team-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'team-modal') closeTeamModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeTeamModal();
+  });
+
+  $('install-app-btn')?.addEventListener('click', installPwa);
+  window.addEventListener('hashchange', () => {
+    const view = window.location.hash.replace('#', '');
+    setView(validViews.includes(view) ? view : 'inicio', false);
   });
 }
 
-function setupCalendarSearch() {
-  const input = document.getElementById("team-search-input");
-  const searchBtn = document.getElementById("search-team-btn");
-  const fullBtn = document.getElementById("full-calendar-btn");
-  const banner = document.getElementById("megaBanner");
-
-  function activateCalendarTab() {
-    document.querySelectorAll(".banner-tab[data-tab]").forEach(t => t.classList.remove("active"));
-    document.querySelector('[data-tab="calendar"]').classList.add("active");
-    document.querySelectorAll(".banner-panel").forEach(p => p.classList.remove("active"));
-    document.getElementById("calendar-container").classList.add("active");
-    banner.classList.add("expanded");
-  }
-
-  function doSearch() {
-    const query = input.value.trim().toLowerCase();
-    if (!query) return;
-    activateCalendarTab();
-    const matchKey = Object.keys(teamNameMap).find(name => name.includes(query));
-    if (matchKey) {
-      const team = teamNameMap[matchKey];
-      loadTeamCalendar(team.abv, team.nombre);
-    } else {
-      document.getElementById("calendar-results").innerHTML =
-        `<p class="calendar-empty">Equipo no encontrado. Intenta con otro nombre.</p>`;
-    }
-  }
-
-  searchBtn.addEventListener("click", doSearch);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
-  fullBtn.addEventListener("click", () => {
-    activateCalendarTab();
-    loadFullCalendarView();
-  });
-}
-
-async function loadTeamCalendar(abreviatura, teamName) {
-  const container = document.getElementById("calendar-results");
-  container.innerHTML = "Cargando calendario...";
-
-  const { data, error } = await supabaseClient
-    .from("calendario_equipo")
-    .select("*")
-    .eq("equipo_abv", abreviatura)
-    .order("jornada");
-
-  if (error) {
-    container.textContent = "Error al cargar calendario: " + error.message;
+function handleDocumentClick(event) {
+  const viewLink = event.target.closest('[data-view-link]');
+  if (viewLink) {
+    event.preventDefault();
+    setView(viewLink.dataset.viewLink);
     return;
   }
 
-  let html = `<h3 class="calendar-team-title">${teamName}</h3><div class="calendar-list">`;
-  data.forEach(row => {
-    const vs = row.condicion === 'local' ? `vs ${row.rival}` : `@ ${row.rival}`;
-    let resultBadge = '';
-    if (row.estado === 'finalizado') {
-      const marcador = row.condicion === 'local'
-        ? `${row.goles_local}-${row.goles_visitante}`
-        : `${row.goles_visitante}-${row.goles_local}`;
-      const claseResultado = row.resultado === 'G' ? 'badge-win' : row.resultado === 'E' ? 'badge-draw' : 'badge-loss';
-      resultBadge = `<span class="calendar-badge ${claseResultado}">${row.resultado} ${marcador}</span>`;
-    } else {
-      const fecha = new Date(row.fecha_hora_mx);
-      const fechaStr = fecha.toLocaleDateString("es-MX", { day: 'numeric', month: 'short' });
-      const enVivo = row.estado === 'en_vivo';
-      resultBadge = enVivo
-        ? `<span class="calendar-badge badge-live">EN VIVO</span>`
-        : `<span class="calendar-badge badge-pending">${fechaStr}</span>`;
-    }
-    html += `
-      <div class="calendar-row">
-        <span class="calendar-jornada">J${row.jornada}</span>
-        <span class="calendar-vs">${vs}</span>
-        ${resultBadge}
+  const action = event.target.closest('[data-action]');
+  if (!action) return;
+
+  if (action.dataset.action === 'set-view') {
+    setView(action.dataset.view);
+  }
+
+  if (action.dataset.action === 'toggle-favorite') {
+    toggleFavorite(action.dataset.team);
+  }
+
+  if (action.dataset.action === 'quiniela-pick') {
+    updateQuinielaPick(action.dataset.match, action.dataset.pick);
+  }
+}
+
+function setView(view, updateHash = true) {
+  const nextView = validViews.includes(view) ? view : 'inicio';
+  appState.view = nextView;
+
+  document.querySelectorAll('.app-view[data-view]').forEach((section) => {
+    section.classList.toggle('active', section.dataset.view === nextView);
+  });
+  document.querySelectorAll('[data-view-link]').forEach((link) => {
+    link.classList.toggle('active', link.dataset.viewLink === nextView);
+  });
+
+  $('main-nav')?.classList.remove('open');
+  $('mobile-menu-btn')?.setAttribute('aria-expanded', 'false');
+
+  if (updateHash && window.location.hash !== `#${nextView}`) {
+    window.history.replaceState(null, '', `#${nextView}`);
+  }
+
+  if (nextView === 'calendario') renderCalendar();
+  if (nextView === 'tips') renderTips();
+  if (nextView === 'analisis') {
+    renderComparison();
+    renderStreaks();
+  }
+  if (nextView === 'herramientas') {
+    renderQuiniela();
+    renderSimulator();
+  }
+}
+
+function searchTeam() {
+  const input = $('team-search-input');
+  const query = normalizeText(input?.value);
+  if (!query) return;
+  const team = appState.teams.find((item) => normalizeText(item.nombre).includes(query));
+  setView('calendario');
+  if (!team) {
+    appState.calendarTeam = '';
+    $('calendar-results').innerHTML = '<div class="empty-state">Equipo no encontrado. Intenta con otro nombre.</div>';
+    return;
+  }
+  appState.calendarTeam = team.abreviatura;
+  if ($('calendar-team-filter')) $('calendar-team-filter').value = team.abreviatura;
+  renderCalendar();
+}
+
+function renderAll() {
+  populateSelectors();
+  renderHome();
+  renderCalendar();
+  renderTips();
+  renderStandings();
+  renderFavorites();
+  renderComparison();
+  renderStreaks();
+  renderPalmares($('palmares-select')?.value || '');
+  renderQuiniela();
+  renderSimulator();
+}
+
+function populateSelectors() {
+  const optionList = appState.teams.map((team) => `<option value="${escapeHtml(team.abreviatura)}">${escapeHtml(team.nombre)}</option>`).join('');
+  const teamSelect = $('team-select');
+  const palmaresSelect = $('palmares-select');
+  const calendarTeamFilter = $('calendar-team-filter');
+  const compareA = $('compare-team-a');
+  const compareB = $('compare-team-b');
+
+  if (teamSelect) teamSelect.innerHTML = '<option value="">Selecciona un equipo...</option>' + optionList;
+  if (palmaresSelect) palmaresSelect.innerHTML = '<option value="">Selecciona un equipo...</option>' + optionList;
+  if (calendarTeamFilter) calendarTeamFilter.innerHTML = '<option value="">Todos los equipos</option>' + optionList;
+  if (compareA) compareA.innerHTML = optionList;
+  if (compareB) compareB.innerHTML = optionList;
+
+  if (appState.compareA && getTeamByAbbreviation(appState.compareA)) {
+    compareA.value = appState.compareA;
+  } else if (appState.teams[0]) {
+    appState.compareA = appState.teams[0].abreviatura;
+    compareA.value = appState.compareA;
+  }
+
+  if (appState.compareB && getTeamByAbbreviation(appState.compareB)) {
+    compareB.value = appState.compareB;
+  } else if (appState.teams[1]) {
+    appState.compareB = appState.teams[1].abreviatura;
+    compareB.value = appState.compareB;
+  }
+
+  if ($('team-search-input')) {
+    $('team-list').innerHTML = appState.teams.map((team) => `<option value="${escapeHtml(team.nombre)}"></option>`).join('');
+  }
+}
+
+function renderHome() {
+  const currentJornada = getCurrentJornada();
+  const upcomingMatches = getUpcomingMatches();
+  const latestJornada = appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0;
+  const latestTips = appState.tips.filter((tip) => numericValue(tip.jornada) === latestJornada);
+  const historyStats = calculateHistoryStats(appState.history);
+
+  if ($('home-jornada')) $('home-jornada').textContent = currentJornada === 'â€”' ? 'â€”' : `J${currentJornada}`;
+  if ($('home-hero-caption')) $('home-hero-caption').textContent = upcomingMatches.length ? `${upcomingMatches.length} partidos esperan tu lectura.` : 'Consulta los partidos disponibles.';
+  if ($('home-favorites-count')) $('home-favorites-count').textContent = appState.favorites.length;
+  if ($('home-upcoming-count')) $('home-upcoming-count').textContent = upcomingMatches.length;
+  if ($('home-tips-count')) $('home-tips-count').textContent = latestTips.length;
+  if ($('home-history-count')) $('home-history-count').textContent = `${historyStats.accuracy}%`;
+
+  if ($('home-next-matches')) {
+    $('home-next-matches').innerHTML = upcomingMatches.length
+      ? upcomingMatches.slice(0, 4).map((match) => renderMatchCard(match, true)).join('')
+      : '<div class="empty-state">No hay partidos prÃ³ximos cargados todavÃ­a.</div>';
+  }
+
+  if ($('home-tips-preview')) {
+    $('home-tips-preview').innerHTML = latestTips.length
+      ? latestTips.slice(0, 4).map(renderMiniTip).join('')
+      : '<div class="empty-state">TodavÃ­a no hay tips publicados.</div>';
+  }
+
+  renderFavoriteChips('home-favorite-teams');
+}
+
+function renderMatchCard(match, showFollow = false) {
+  const localAbbreviation = getTeamAbbreviation(match.local);
+  const visitorAbbreviation = getTeamAbbreviation(match.visitante);
+  const localFollow = showFollow && localAbbreviation
+    ? `<button class="follow-mini ${appState.favorites.includes(localAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(localAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.local)}">â˜…</button>`
+    : '';
+  const visitorFollow = showFollow && visitorAbbreviation
+    ? `<button class="follow-mini ${appState.favorites.includes(visitorAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(visitorAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.visitante)}">â˜…</button>`
+    : '';
+
+  return `
+    <article class="match-card">
+      <div class="match-meta"><span>Jornada ${escapeHtml(match.jornada ?? 'â€”')}</span><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span></div>
+      <div class="match-main">
+        <div class="match-team"><span class="team-mark green-mark"></span><strong>${escapeHtml(match.local)}</strong>${localFollow}</div>
+        <div class="match-score ${getScoreClass(match)}">${escapeHtml(getScoreLabel(match))}</div>
+        <div class="match-team visitor-team">${visitorFollow}<strong>${escapeHtml(match.visitante)}</strong><span class="team-mark red-mark"></span></div>
       </div>
+    </article>
+  `;
+}
+
+function renderMiniTip(tip) {
+  const meta = categoryMeta[tip.categoria] || categoryMeta.base;
+  return `
+    <article class="mini-tip ${meta.className}">
+      <div><span class="category-dot ${meta.dot}"></span><strong>${escapeHtml(tip.local)} vs ${escapeHtml(tip.visitante)}</strong></div>
+      <span>${escapeHtml(tip.prediccion || tip.tipo_apuesta || 'Lectura pendiente')}</span>
+      <b>${numericValue(tip.confianza)}%</b>
+    </article>
+  `;
+}
+
+function renderCalendar() {
+  const container = $('calendar-results');
+  if (!container) return;
+
+  let matches = [...appState.matches];
+  if (appState.calendarFilter === 'future') matches = matches.filter((match) => !isFinalMatch(match));
+  if (appState.calendarFilter === 'favorites') matches = matches.filter((match) => appState.favorites.some((favorite) => matchContainsTeam(match, favorite)));
+  if (appState.calendarTeam) matches = matches.filter((match) => matchContainsTeam(match, appState.calendarTeam));
+
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty-state">No hay partidos que coincidan con estos filtros.</div>';
+    return;
+  }
+
+  const groups = new Map();
+  matches.forEach((match) => {
+    const jornada = numericValue(match.jornada, 0);
+    if (!groups.has(jornada)) groups.set(jornada, []);
+    groups.get(jornada).push(match);
+  });
+
+  container.innerHTML = [...groups.entries()].sort((first, second) => first[0] - second[0]).map(([jornada, jornadaMatches]) => `
+    <section class="calendar-group">
+      <div class="group-heading"><span>Jornada ${jornada || 'â€”'}</span><small>${jornadaMatches.length} partidos</small></div>
+      <div class="match-list">${jornadaMatches.map((match) => renderMatchCard(match, true)).join('')}</div>
+    </section>
+  `).join('');
+}
+
+function renderTips() {
+  const container = $('tips-container');
+  if (!container) return;
+  const filter = $('tips-filter')?.value || 'all';
+  const latestJornada = appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0;
+  const latestTips = appState.tips
+    .filter((tip) => numericValue(tip.jornada) === latestJornada)
+    .filter((tip) => filter === 'all' || tip.categoria === filter);
+
+  if (!latestTips.length) {
+    container.innerHTML = '<div class="empty-state">No hay tips para esta categorÃ­a.</div>';
+  } else {
+    container.innerHTML = latestTips.map((tip) => renderTipCard(tip)).join('');
+  }
+
+  renderHistory();
+}
+
+function renderTipCard(tip) {
+  const meta = categoryMeta[tip.categoria] || categoryMeta.base;
+  const confidence = Math.min(100, Math.max(0, numericValue(tip.confianza)));
+  return `
+    <article class="tip-card ${meta.className}">
+      <div class="tip-card-top"><span class="category-label"><i class="category-dot ${meta.dot}"></i>${meta.label}</span><span>J${escapeHtml(tip.jornada ?? 'â€”')}</span></div>
+      <h3>${escapeHtml(tip.local)} <span>vs</span> ${escapeHtml(tip.visitante)}</h3>
+      <div class="tip-prediction"><span>${escapeHtml(tip.tipo_apuesta || 'PredicciÃ³n')}</span><strong>${escapeHtml(tip.prediccion || 'Pendiente')}</strong></div>
+      <div class="confidence-row"><span>Confianza estimada</span><strong>${confidence}%</strong></div>
+      <div class="confidence-bar"><span style="width:${confidence}%"></span></div>
+      <details class="tip-reason"><summary>Â¿Por quÃ©?</summary><p>${escapeHtml(tip.razonamiento || 'Sin razonamiento registrado.')}</p></details>
+    </article>
+  `;
+}
+
+function calculateHistoryStats(rows) {
+  const settledRows = safeArray(rows).filter((row) => ['acertado', 'fallado'].includes(String(row.resultado || '').toLowerCase()));
+  const hits = settledRows.filter((row) => String(row.resultado).toLowerCase() === 'acertado').length;
+  return {
+    total: settledRows.length,
+    hits,
+    accuracy: settledRows.length ? Math.round((hits / settledRows.length) * 100) : 0
+  };
+}
+
+function renderHistory() {
+  const metricsContainer = $('tips-history-metrics');
+  const listContainer = $('tips-history-container');
+  if (!metricsContainer || !listContainer) return;
+
+  const rows = appState.history;
+  const overall = calculateHistoryStats(rows);
+  const categoryStats = Object.entries(categoryMeta).map(([category, meta]) => {
+    const stats = calculateHistoryStats(rows.filter((row) => row.categoria === category));
+    return `<article class="history-metric ${meta.className}"><span class="category-label"><i class="category-dot ${meta.dot}"></i>${meta.label}</span><strong>${stats.accuracy}%</strong><small>${stats.hits}/${stats.total} comprobados</small></article>`;
+  }).join('');
+
+  metricsContainer.innerHTML = `
+    <article class="history-metric history-overall"><span>Total comprobado</span><strong>${overall.accuracy}%</strong><small>${overall.hits}/${overall.total} aciertos</small></article>
+    ${categoryStats}
+  `;
+
+  const historyRows = rows
+    .sort((first, second) => numericValue(second.jornada) - numericValue(first.jornada))
+    .slice(0, 60);
+
+  if (!historyRows.length) {
+    listContainer.innerHTML = '<div class="empty-state">TodavÃ­a no hay registros en el historial.</div>';
+    return;
+  }
+
+  const notice = appState.historySource === 'fallback'
+    ? '<div class="info-state">El historial estÃ¡ listo visualmente. Ejecuta el SQL incluido para guardar acertados y fallados.</div>'
+    : '';
+
+  listContainer.innerHTML = notice + historyRows.map((row) => {
+    const result = String(row.resultado || 'pendiente').toLowerCase();
+    const resultLabel = result === 'acertado' ? 'ACERTADO' : result === 'fallado' ? 'FALLADO' : 'PENDIENTE';
+    return `
+      <article class="history-row">
+        <div><span class="history-jornada">J${escapeHtml(row.jornada ?? 'â€”')}</span><strong>${escapeHtml(row.local)} vs ${escapeHtml(row.visitante)}</strong><small>${escapeHtml(row.prediccion || 'PredicciÃ³n')} Â· ${escapeHtml(row.categoria || 'sin categorÃ­a')}</small></div>
+        <span class="result-badge result-${result}">${resultLabel}</span>
+      </article>
     `;
-  });
-  html += "</div>";
-  container.innerHTML = html;
+  }).join('');
 }
 
-async function loadFullCalendarView() {
-  const container = document.getElementById("calendar-results");
-  container.innerHTML = "Cargando calendario completo...";
+function renderStandings() {
+  const container = $('standings-container');
+  if (!container) return;
 
-  const { data, error } = await supabaseClient
-    .from("calendario_completo")
-    .select("*");
-
-  if (error) {
-    container.textContent = "Error al cargar calendario: " + error.message;
+  if (!appState.standings.length) {
+    container.innerHTML = '<div class="empty-state">No se pudo cargar la tabla de posiciones.</div>';
     return;
   }
-
-  const jornadas = [...new Set(data.map(m => m.jornada))].sort((a, b) => a - b);
-  let html = "";
-  jornadas.forEach(num => {
-    const matches = data.filter(m => m.jornada === num);
-    html += `<h3 class="calendar-jornada-title">Jornada ${num}</h3><div class="calendar-list">`;
-    matches.forEach(m => {
-      const enVivo = m.estado === 'en_vivo';
-      const finalizado = m.estado === 'finalizado';
-      let scoreHtml;
-      if (finalizado || enVivo) {
-        scoreHtml = `<span class="calendar-badge ${enVivo ? 'badge-live' : 'badge-score'}">${m.goles_local ?? 0} - ${m.goles_visitante ?? 0}</span>`;
-      } else {
-        const fecha = new Date(m.fecha_hora_mx);
-        const fechaStr = fecha.toLocaleDateString("es-MX", { day: 'numeric', month: 'short' });
-        scoreHtml = `<span class="calendar-badge badge-pending">${fechaStr}</span>`;
-      }
-      html += `
-        <div class="calendar-row">
-          <span class="calendar-vs">${m.local} vs ${m.visitante}</span>
-          ${scoreHtml}
-        </div>
-      `;
-    });
-    html += "</div>";
-  });
-  container.innerHTML = html;
-}
-
-// ===== PLANTILLAS (selector en banner → abre modal blanco con texto negro) =====
-async function loadRosterTab() {
-  const select = document.getElementById("team-select");
-  const { data, error } = await supabaseClient
-    .from("equipos")
-    .select("abreviatura, nombre")
-    .order("nombre");
-
-  if (error) {
-    console.error("Error cargando equipos:", error.message);
-    return;
-  }
-
-  data.forEach(equipo => {
-    const option = document.createElement("option");
-    option.value = equipo.abreviatura;
-    option.textContent = equipo.nombre;
-    select.appendChild(option);
-  });
-
-  select.addEventListener("change", (e) => {
-    if (e.target.value) openTeamModal(e.target.value);
-  });
-}
-
-async function openTeamModal(abreviatura) {
-  const modal = document.getElementById("team-modal");
-  modal.classList.remove("hidden");
-
-  document.getElementById("dt-container").innerHTML = "Cargando DT...";
-  document.getElementById("roster-list-container").innerHTML = "Cargando plantilla...";
-
-  await Promise.all([loadDT(abreviatura), loadRoster(abreviatura)]);
-}
-
-async function loadDT(abreviatura) {
-  const container = document.getElementById("dt-container");
-  const { data, error } = await supabaseClient
-    .from("dt_por_equipo")
-    .select("*")
-    .eq("abreviatura", abreviatura)
-    .single();
-
-  if (error) { container.innerHTML = ""; return; }
 
   container.innerHTML = `
-    <div class="dt-card">
-      <div class="dt-header">
-        <span class="dt-name">${data.dt_nombre}</span>
-        <span class="dt-nationality">${data.nacionalidad}${data.edad ? ' · ' + data.edad + ' años' : ''}</span>
-      </div>
-      ${data.sistema_tactico ? `<div class="dt-sistema">Sistema: <strong>${data.sistema_tactico}</strong></div>` : ''}
-      ${data.estilo_ofensivo ? `<div class="dt-estilo"><strong>Ofensiva:</strong> ${data.estilo_ofensivo}</div>` : ''}
-      ${data.estilo_defensivo ? `<div class="dt-estilo"><strong>Defensiva:</strong> ${data.estilo_defensivo}</div>` : ''}
-      ${data.balon_parado ? `<div class="dt-estilo"><strong>Balón parado:</strong> ${data.balon_parado}</div>` : ''}
+    <div class="card-heading standings-heading"><div><span class="eyebrow">CLASIFICACIÃ“N</span><h2>Tabla de posiciones</h2></div><span class="table-note">Top 8 / zona de liguilla</span></div>
+    <div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>Club</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Forma</th></tr></thead><tbody>
+      ${appState.standings.map((row, index) => `
+        <tr class="${index < 8 ? 'playoff-row' : ''}">
+          <td><span class="position-number">${index + 1}</span></td>
+          <td><div class="club-cell"><span class="team-mark ${index % 2 ? 'red-mark' : 'green-mark'}"></span><strong>${escapeHtml(row.club || row.nombre)}</strong></div></td>
+          <td>${numericValue(row.pj)}</td><td>${numericValue(row.g)}</td><td>${numericValue(row.e_)}</td><td>${numericValue(row.p_)}</td><td>${numericValue(row.gf)}</td><td>${numericValue(row.gc)}</td><td>${numericValue(row.dg)}</td><td><strong class="points-cell">${numericValue(row.pts)}</strong></td>
+          <td><div class="form-cell">${renderFormDots(row.club || row.nombre)}</div></td>
+        </tr>
+      `).join('')}
+    </tbody></table></div>
+  `;
+}
+
+function toggleFavorite(abbreviation) {
+  if (!abbreviation) return;
+  if (appState.favorites.includes(abbreviation)) {
+    appState.favorites = appState.favorites.filter((item) => item !== abbreviation);
+  } else {
+    appState.favorites = [...appState.favorites, abbreviation];
+  }
+  localStorage.setItem('lma-favorite-teams', JSON.stringify(appState.favorites));
+  renderFavorites();
+  renderHome();
+  renderCalendar();
+}
+
+function renderFavoriteChips(containerId) {
+  const container = $(containerId);
+  if (!container) return;
+  const favoriteTeams = appState.favorites.map(getTeamByAbbreviation).filter(Boolean);
+  container.innerHTML = favoriteTeams.length
+    ? favoriteTeams.map((team) => `<button class="favorite-chip" type="button" data-action="set-view" data-view="calendario">${escapeHtml(team.nombre)}<span>â€º</span></button>`).join('')
+    : '<span class="empty-chip">Elige equipos desde la secciÃ³n Equipos.</span>';
+}
+
+function renderFavorites() {
+  const selector = $('favorite-team-selector');
+  const list = $('favorite-team-list');
+  if (!selector || !list) return;
+
+  selector.innerHTML = appState.teams.map((team) => `
+    <button class="team-choice ${appState.favorites.includes(team.abreviatura) ? 'selected' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(team.abreviatura)}">
+      <span class="team-mark ${appState.favorites.includes(team.abreviatura) ? 'green-mark' : 'gray-mark'}"></span>${escapeHtml(team.nombre)}<span class="choice-star">â˜…</span>
+    </button>
+  `).join('');
+
+  const favoriteTeams = appState.favorites.map(getTeamByAbbreviation).filter(Boolean);
+  list.innerHTML = favoriteTeams.length
+    ? favoriteTeams.map((team) => `<div class="favorite-row"><span><span class="team-mark green-mark"></span>${escapeHtml(team.nombre)}</span><button type="button" class="remove-btn" data-action="toggle-favorite" data-team="${escapeHtml(team.abreviatura)}">Quitar</button></div>`).join('')
+    : '<div class="empty-state">AÃºn no sigues ningÃºn equipo.</div>';
+}
+
+function renderComparison() {
+  const container = $('comparison-results');
+  if (!container) return;
+  const teamA = getTeamByAbbreviation(appState.compareA);
+  const teamB = getTeamByAbbreviation(appState.compareB);
+  if (!teamA || !teamB) {
+    container.innerHTML = '<div class="empty-state">Selecciona dos equipos para comparar.</div>';
+    return;
+  }
+
+  const statsA = appState.standings.find((row) => row.abreviatura === teamA.abreviatura);
+  const statsB = appState.standings.find((row) => row.abreviatura === teamB.abreviatura);
+  const h2h = getHeadToHead(teamA.nombre, teamB.nombre).slice(0, 10);
+
+  container.innerHTML = `
+    <div class="comparison-columns">
+      ${renderComparisonTeam(teamA, statsA)}
+      <div class="comparison-middle"><span>FORMA</span><div class="form-versus"><div>${renderFormDots(teamA.nombre)}</div><b>vs</b><div>${renderFormDots(teamB.nombre)}</div></div></div>
+      ${renderComparisonTeam(teamB, statsB)}
+    </div>
+    <div class="h2h-section"><div class="section-inline-heading"><h3>Enfrentamientos disponibles</h3><span>${h2h.length} partidos</span></div>${renderHeadToHeadTable(h2h, teamA.nombre, teamB.nombre)}</div>
+  `;
+}
+
+function renderComparisonTeam(team, stats) {
+  const palmares = appState.palmares.find((item) => item.abreviatura === team.abreviatura);
+  const trophies = palmares ? numericValue(palmares.liga_mx) + numericValue(palmares.copa_mx) + numericValue(palmares.concacaf) : 0;
+  return `
+    <div class="comparison-team"><div class="comparison-team-title"><span class="team-crest">${escapeHtml(team.abreviatura.slice(0, 3))}</span><h3>${escapeHtml(team.nombre)}</h3></div>
+      <div class="comparison-stat-grid"><div><span>PosiciÃ³n</span><strong>${stats ? appState.standings.indexOf(stats) + 1 : 'â€”'}</strong></div><div><span>Puntos</span><strong>${stats ? numericValue(stats.pts) : 'â€”'}</strong></div><div><span>DG</span><strong>${stats ? numericValue(stats.dg) : 'â€”'}</strong></div><div><span>TÃ­tulos registrados</span><strong>${trophies}</strong></div></div>
     </div>
   `;
 }
 
-async function loadRoster(abreviatura) {
-  const container = document.getElementById("roster-list-container");
-  const { data, error } = await supabaseClient
-    .from("jugadores_equipo")
-    .select("*")
-    .eq("abreviatura", abreviatura);
-
-  if (error) {
-    container.textContent = "Error al cargar plantilla: " + error.message;
-    return;
-  }
-
-  const posiciones = [
-    { key: "POR", label: "Porteros" },
-    { key: "DEF", label: "Defensas" },
-    { key: "MED", label: "Mediocampistas" },
-    { key: "DEL", label: "Delanteros" }
-  ];
-
-  let html = "";
-  posiciones.forEach(pos => {
-    const jugadores = data.filter(j => j.posicion === pos.key);
-    if (jugadores.length === 0) return;
-    html += `<h3 class="roster-position-title">${pos.label}</h3><div class="roster-list">`;
-    jugadores.forEach(j => {
-      html += `
-        <div class="player-card">
-          <span class="player-number">${j.numero ?? '-'}</span>
-          <span class="player-name">${j.nombre}</span>
-          <span class="player-info">${j.nacionalidad}${j.edad ? ' · ' + j.edad + ' años' : ''}</span>
-        </div>
-      `;
-    });
-    html += `</div>`;
-  });
-  container.innerHTML = html;
+function getHeadToHead(firstTeam, secondTeam) {
+  const first = normalizeText(firstTeam);
+  const second = normalizeText(secondTeam);
+  return appState.matches
+    .filter((match) => {
+      const local = normalizeText(match.local);
+      const visitor = normalizeText(match.visitante);
+      return (local === first && visitor === second) || (local === second && visitor === first);
+    })
+    .sort((firstMatch, secondMatch) => new Date(secondMatch.fecha_hora_mx || 0) - new Date(firstMatch.fecha_hora_mx || 0));
 }
 
-// ===== PALMARÉS =====
-async function loadPalmaresSelector() {
-  const select = document.getElementById("palmares-select");
-  const { data, error } = await supabaseClient
-    .from("equipos")
-    .select("abreviatura, nombre")
-    .order("nombre");
-
-  if (error) return;
-
-  data.forEach(equipo => {
-    const option = document.createElement("option");
-    option.value = equipo.abreviatura;
-    option.textContent = equipo.nombre;
-    select.appendChild(option);
-  });
-
-  select.addEventListener("change", (e) => {
-    if (e.target.value) loadPalmares(e.target.value);
-    else document.getElementById("palmares-results").innerHTML = "";
-  });
+function renderHeadToHeadTable(matches, firstTeam, secondTeam) {
+  if (!matches.length) return '<div class="empty-state">TodavÃ­a no hay enfrentamientos entre estos equipos en los datos cargados.</div>';
+  return `<div class="h2h-list">${matches.map((match) => `<div class="h2h-row"><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span><strong>${escapeHtml(match.local)} ${getScoreLabel(match)} ${escapeHtml(match.visitante)}</strong><span class="h2h-result">${getMatchOutcome(match) || 'â€”'}</span></div>`).join('')}</div>`;
 }
 
-async function loadPalmares(abreviatura) {
-  const container = document.getElementById("palmares-results");
-  container.innerHTML = "Cargando palmarés...";
+function renderStreaks() {
+  const container = $('active-streaks');
+  if (!container) return;
+  const streaks = appState.teams.map((team) => {
+    const matches = getFinishedMatchesForTeam(team.nombre);
+    let unbeaten = 0;
+    let scored = 0;
+    for (const match of matches) {
+      const result = getTeamResult(match, team.nombre);
+      if (result === 'P') break;
+      unbeaten += 1;
+    }
+    for (const match of matches) {
+      const isLocal = normalizeText(match.local) === normalizeText(team.nombre);
+      const goalsFor = isLocal ? numericValue(match.goles_local) : numericValue(match.goles_visitante);
+      if (goalsFor === 0) break;
+      scored += 1;
+    }
+    return { team, unbeaten, scored, form: getTeamForm(team.nombre) };
+  }).sort((first, second) => second.unbeaten - first.unbeaten || second.scored - first.scored).slice(0, 8);
 
-  const { data, error } = await supabaseClient
-    .from("palmares_equipo")
-    .select("*")
-    .eq("abreviatura", abreviatura)
-    .single();
+  container.innerHTML = streaks.length ? streaks.map((item) => `
+    <article class="streak-card"><div class="streak-title"><span class="team-mark green-mark"></span><strong>${escapeHtml(item.team.nombre)}</strong><div class="form-cell">${renderFormDots(item.team.nombre)}</div></div><div class="streak-values"><div><strong>${item.unbeaten}</strong><span>sin perder</span></div><div><strong>${item.scored}</strong><span>anotando</span></div></div></article>
+  `).join('') : '<div class="empty-state">AÃºn no hay suficientes partidos finalizados.</div>';
+}
 
-  if (error) {
-    container.textContent = "Error al cargar palmarés: " + error.message;
+function renderPalmares(abbreviation) {
+  const container = $('palmares-results');
+  if (!container) return;
+  if (!abbreviation) {
+    container.innerHTML = '<div class="palmares-placeholder">Selecciona un equipo para consultar sus tÃ­tulos.</div>';
     return;
   }
-
+  const data = appState.palmares.find((item) => item.abreviatura === abbreviation);
+  if (!data) {
+    container.innerHTML = '<div class="empty-state">No hay palmarÃ©s registrado para este equipo.</div>';
+    return;
+  }
   const items = [
-    { label: "Liga MX", val: data.liga_mx },
-    { label: "Copa MX", val: data.copa_mx },
-    { label: "Concacaf / Gigantes", val: data.concacaf },
-    { label: "Leagues Cup", val: data.leagues_cup },
-    { label: "Interamericana / Sudamericana", val: data.interamericana },
-    { label: "Campeones Cup", val: data.campeones_cup },
-    { label: "Campeón de Campeones", val: data.campeon_campeones },
-    { label: "Supercopa MX", val: data.supercopa_mx },
-    { label: "Supercopa de la Liga MX", val: data.supercopa_liga_mx },
+    ['Liga MX', data.liga_mx],
+    ['Copa MX', data.copa_mx],
+    ['Concacaf', data.concacaf],
+    ['Leagues Cup', data.leagues_cup],
+    ['Interamericana', data.interamericana],
+    ['Campeones Cup', data.campeones_cup],
+    ['CampeÃ³n de Campeones', data.campeon_campeones],
+    ['Supercopa MX', data.supercopa_mx],
+    ['Supercopa Liga MX', data.supercopa_liga_mx]
   ];
-
-  const total = items.reduce((sum, i) => sum + i.val, 0);
-
-  let html = `<h3 class="palmares-team-title">${data.equipo_nombre} — Total: ${total}</h3>
-    <div class="palmares-grid">`;
-  items.forEach(i => {
-    html += `
-      <div class="palmares-item">
-        <span class="palmares-label">${i.label}</span>
-        <span class="palmares-count">${i.val}</span>
-      </div>
-    `;
-  });
-  html += "</div>";
-  container.innerHTML = html;
+  const total = items.reduce((sum, item) => sum + numericValue(item[1]), 0);
+  container.innerHTML = `<div class="palmares-total"><span>${escapeHtml(data.equipo_nombre || getTeamName(abbreviation))}</span><strong>${total} tÃ­tulos registrados</strong></div><div class="palmares-mini-grid">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${numericValue(value)}</strong></div>`).join('')}</div>`;
 }
 
-document.addEventListener("DOMContentLoaded", checkConnection);
+async function openTeamModal(abbreviation) {
+  const modal = $('team-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  $('dt-container').innerHTML = '<div class="modal-loading">Cargando director tÃ©cnico...</div>';
+  $('roster-list-container').innerHTML = '<div class="modal-loading">Cargando plantilla...</div>';
+
+  const [dtResponse, rosterResponse] = await Promise.all([
+    supabaseClient.from('dt_por_equipo').select('*').eq('abreviatura', abbreviation).maybeSingle(),
+    supabaseClient.from('jugadores_equipo').select('*').eq('abreviatura', abbreviation)
+  ]);
+
+  if (dtResponse.error || !dtResponse.data) {
+    $('dt-container').innerHTML = '<div class="empty-state">No hay director tÃ©cnico registrado.</div>';
+  } else {
+    const data = dtResponse.data;
+    $('dt-container').innerHTML = `<div class="dt-card"><span class="eyebrow">DIRECTOR TÃ‰CNICO</span><h2>${escapeHtml(data.dt_nombre)}</h2><p>${escapeHtml(data.nacionalidad || '')}${data.edad ? ` Â· ${numericValue(data.edad)} aÃ±os` : ''}</p>${data.sistema_tactico ? `<strong>Sistema ${escapeHtml(data.sistema_tactico)}</strong>` : ''}<small>${escapeHtml(data.estilo_ofensivo || '')}</small></div>`;
+  }
+
+  if (rosterResponse.error || !rosterResponse.data?.length) {
+    $('roster-list-container').innerHTML = '<div class="empty-state">No hay jugadores registrados.</div>';
+    return;
+  }
+
+  const positionLabels = { POR: 'Porteros', DEF: 'Defensas', MED: 'Mediocampistas', DEL: 'Delanteros' };
+  const players = safeArray(rosterResponse.data);
+  $('roster-list-container').innerHTML = Object.entries(positionLabels).map(([position, label]) => {
+    const positionPlayers = players.filter((player) => player.posicion === position);
+    if (!positionPlayers.length) return '';
+    return `<section class="roster-section"><h3>${label}</h3>${positionPlayers.map((player) => `<div class="player-card"><strong>${escapeHtml(player.numero ?? 'â€”')}</strong><span>${escapeHtml(player.nombre)}</span><small>${escapeHtml(player.nacionalidad || '')}${player.edad ? ` Â· ${numericValue(player.edad)} aÃ±os` : ''}</small></div>`).join('')}</section>`;
+  }).join('');
+}
+
+function closeTeamModal() {
+  $('team-modal')?.classList.add('hidden');
+}
+
+function getQuinielaMatches() {
+  return getUpcomingMatches().slice(0, appState.quinielaSize);
+}
+
+function updateQuinielaPick(matchId, pick) {
+  const current = appState.quinielaPicks[matchId] || ['1'];
+  if (current.includes(pick)) {
+    if (current.length > 1) appState.quinielaPicks[matchId] = current.filter((item) => item !== pick);
+  } else {
+    appState.quinielaPicks[matchId] = [...current, pick].slice(0, 3);
+  }
+  renderQuiniela();
+}
+
+function renderQuiniela() {
+  const container = $('quiniela-matches');
+  if (!container) return;
+  const matches = getQuinielaMatches();
+  const doubles = matches.filter((match) => (appState.quinielaPicks[match.id] || ['1']).length === 2).length;
+  const triples = matches.filter((match) => (appState.quinielaPicks[match.id] || ['1']).length === 3).length;
+  const combinations = matches.reduce((total, match) => total * (appState.quinielaPicks[match.id] || ['1']).length, 1);
+  const baseAmount = numericValue($('quiniela-base-amount')?.value, 1);
+
+  if ($('quiniela-doubles')) $('quiniela-doubles').textContent = doubles;
+  if ($('quiniela-triples')) $('quiniela-triples').textContent = triples;
+  if ($('quiniela-combinations')) $('quiniela-combinations').textContent = new Intl.NumberFormat('es-MX').format(combinations);
+  if ($('quiniela-total-cost')) $('quiniela-total-cost').textContent = `$${(combinations * baseAmount).toFixed(2)}`;
+
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty-state">No hay partidos prÃ³ximos disponibles para armar una quiniela.</div>';
+    return;
+  }
+
+  const availabilityNote = matches.length < appState.quinielaSize ? `<div class="info-state">Solo hay ${matches.length} partidos prÃ³ximos cargados; la quiniela se ampliarÃ¡ cuando agregues mÃ¡s fechas.</div>` : '';
+  container.innerHTML = availabilityNote + matches.map((match, index) => {
+    const picks = appState.quinielaPicks[match.id] || ['1'];
+    return `<article class="quiniela-row"><span class="quiniela-number">${index + 1}</span><div class="quiniela-match"><strong>${escapeHtml(match.local)}</strong><span>vs</span><strong>${escapeHtml(match.visitante)}</strong><small>${escapeHtml(formatDate(match.fecha_hora_mx))}</small></div><div class="quiniela-picks">${['1', 'X', '2'].map((pick) => `<button class="pick-btn ${picks.includes(pick) ? 'selected' : ''}" type="button" data-action="quiniela-pick" data-match="${escapeHtml(match.id)}" data-pick="${pick}">${pick}<small>${pick === '1' ? 'Local' : pick === 'X' ? 'Empate' : 'Visita'}</small></button>`).join('')}</div></article>`;
+  }).join('');
+}
+
+function getSimulatorMatches() {
+  return getUpcomingMatches().slice(0, 21);
+}
+
+function updateSimulatorPick(matchId, pick) {
+  if (pick) appState.simulatorPicks[matchId] = pick;
+  else delete appState.simulatorPicks[matchId];
+  renderSimulator();
+}
+
+function calculateSimulatedStandings() {
+  const table = appState.standings.map((row) => ({
+    abbreviation: row.abreviatura,
+    club: row.club || row.nombre,
+    pj: numericValue(row.pj),
+    g: numericValue(row.g),
+    e: numericValue(row.e_),
+    p: numericValue(row.p_),
+    gf: numericValue(row.gf),
+    gc: numericValue(row.gc),
+    dg: numericValue(row.dg),
+    pts: numericValue(row.pts),
+    currentPosition: appState.standings.indexOf(row) + 1
+  }));
+  const byAbbreviation = new Map(table.map((row) => [row.abbreviation, row]));
+
+  getSimulatorMatches().forEach((match) => {
+    const outcome = appState.simulatorPicks[match.id];
+    if (!outcome) return;
+    const local = byAbbreviation.get(getTeamAbbreviation(match.local));
+    const visitor = byAbbreviation.get(getTeamAbbreviation(match.visitante));
+    if (!local || !visitor) return;
+    local.pj += 1;
+    visitor.pj += 1;
+    if (outcome === '1') {
+      local.g += 1;
+      visitor.p += 1;
+      local.pts += 3;
+    } else if (outcome === 'X') {
+      local.e += 1;
+      visitor.e += 1;
+      local.pts += 1;
+      visitor.pts += 1;
+    } else {
+      local.p += 1;
+      visitor.g += 1;
+      visitor.pts += 3;
+    }
+  });
+
+  table.forEach((row) => { row.dg = row.gf - row.gc; });
+  return table.sort((first, second) => second.pts - first.pts || second.dg - first.dg || second.gf - first.gf);
+}
+
+function renderSimulator() {
+  const matchesContainer = $('simulator-matches');
+  const resultsContainer = $('simulator-results');
+  if (!matchesContainer || !resultsContainer) return;
+  const matches = getSimulatorMatches();
+  const currentCutoff = appState.standings[7]?.pts ?? appState.standings[appState.standings.length - 1]?.pts ?? 0;
+  if ($('simulator-cutoff')) $('simulator-cutoff').textContent = `${numericValue(currentCutoff)} puntos`;
+
+  matchesContainer.innerHTML = matches.length ? matches.map((match) => `<div class="sim-match-row"><div><strong>${escapeHtml(match.local)}</strong><span>vs</span><strong>${escapeHtml(match.visitante)}</strong><small>${escapeHtml(formatDate(match.fecha_hora_mx))}</small></div><select class="sim-select" data-simulator-match="${escapeHtml(match.id)}"><option value="">Sin cambio</option><option value="1">Gana local</option><option value="X">Empate</option><option value="2">Gana visitante</option></select></div>`).join('') : '<div class="empty-state">No hay partidos prÃ³ximos para simular.</div>';
+  matchesContainer.querySelectorAll('[data-simulator-match]').forEach((select) => {
+    select.value = appState.simulatorPicks[select.dataset.simulatorMatch] || '';
+    select.addEventListener('change', (event) => updateSimulatorPick(event.target.dataset.simulatorMatch, event.target.value));
+  });
+
+  const simulated = calculateSimulatedStandings();
+  resultsContainer.innerHTML = simulated.length ? `<div class="simulator-result-heading"><span>ProyecciÃ³n con tus resultados</span><small>Las filas verdes quedan dentro del Top 8</small></div><div class="simulation-table">${simulated.map((row, index) => { const needed = Math.max(0, numericValue(currentCutoff) - row.pts + 1); return `<div class="simulation-row ${index < 8 ? 'inside-playoff' : ''}"><span class="simulation-position">${index + 1}</span><strong>${escapeHtml(row.club)}</strong><span>${row.pts} pts</span><span>${row.dg >= 0 ? '+' : ''}${row.dg} DG</span><span class="simulation-status">${index < 8 ? 'Dentro del Top 8' : `Necesita ${needed} pts`}</span></div>`; }).join('')}</div>` : '<div class="empty-state">La tabla simulada aparecerÃ¡ cuando haya posiciones cargadas.</div>';
+}
+
+function registerPwa() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    appState.deferredInstallPrompt = event;
+    $('install-app-btn')?.classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', () => {
+    appState.deferredInstallPrompt = null;
+    $('install-app-btn')?.classList.add('hidden');
+  });
+}
+
+async function installPwa() {
+  if (!appState.deferredInstallPrompt) return;
+  appState.deferredInstallPrompt.prompt();
+  await appState.deferredInstallPrompt.userChoice;
+  appState.deferredInstallPrompt = null;
+  $('install-app-btn')?.classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', initializeApp);
