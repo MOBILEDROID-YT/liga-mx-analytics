@@ -73,7 +73,7 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* Encabezado principal y navegaciÃ³n */
+/* Encabezado principal y navegación */
 .mega-banner {
   position: relative;
   isolation: isolate;
@@ -530,7 +530,7 @@ select:focus-visible {
   font-style: italic;
 }
 
-/* Estado de conexiÃ³n */
+/* Estado de conexión */
 .status-container {
   display: flex;
   justify-content: center;
@@ -648,7 +648,7 @@ select:focus-visible {
 .form-draw { background: #9aa5b4; }
 .form-loss { background: var(--red); }
 
-/* PalmarÃ©s con textura de plano de estadio */
+/* Palmarés con textura de plano de estadio */
 .palmares-container {
   position: relative;
   isolation: isolate;

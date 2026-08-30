@@ -108,7 +108,7 @@ function getCurrentJornada() {
   const jornadas = [...appState.tips, ...appState.matches]
     .map((item) => numericValue(item.jornada, 0))
     .filter(Boolean);
-  return jornadas.length ? Math.max(...jornadas) : 'â€”';
+  return jornadas.length ? Math.max(...jornadas) : '—';
 }
 
 function getUpcomingMatches() {
@@ -174,13 +174,13 @@ function setConnectionStatus(type, message) {
 function setLastUpdated() {
   appState.lastUpdatedAt = new Date();
   const element = $('last-updated');
-  if (element) element.textContent = `Ãšltima consulta: ${formatDate(appState.lastUpdatedAt)}`;
+  if (element) element.textContent = `Última consulta: ${formatDate(appState.lastUpdatedAt)}`;
 }
 
 async function initializeApp() {
   bindStaticEvents();
   setView(validViews.includes(appState.view) ? appState.view : 'inicio', false);
-  setConnectionStatus('loading', 'Verificando conexiÃ³n con Supabase...');
+  setConnectionStatus('loading', 'Verificando conexión con Supabase...');
 
   try {
     const { error: sessionError } = await supabaseClient.auth.getSession();
@@ -200,12 +200,12 @@ async function initializeApp() {
 
     const failedRequests = results.filter((result) => result.status === 'rejected');
     if (failedRequests.length) {
-      setConnectionStatus('error', 'Conectado, pero algunas secciones necesitan revisiÃ³n.');
+      setConnectionStatus('error', 'Conectado, pero algunas secciones necesitan revisión.');
     } else {
       setConnectionStatus('ok', 'Conectado a Supabase correctamente');
     }
   } catch (error) {
-    setConnectionStatus('error', `Error de conexiÃ³n: ${error.message}`);
+    setConnectionStatus('error', `Error de conexión: ${error.message}`);
     renderAll();
   }
 
@@ -488,7 +488,7 @@ function renderHome() {
   const latestTips = appState.tips.filter((tip) => numericValue(tip.jornada) === latestJornada);
   const historyStats = calculateHistoryStats(appState.history);
 
-  if ($('home-jornada')) $('home-jornada').textContent = currentJornada === 'â€”' ? 'â€”' : `J${currentJornada}`;
+  if ($('home-jornada')) $('home-jornada').textContent = currentJornada === '—' ? '—' : `J${currentJornada}`;
   if ($('home-hero-caption')) $('home-hero-caption').textContent = upcomingMatches.length ? `${upcomingMatches.length} partidos esperan tu lectura.` : 'Consulta los partidos disponibles.';
   if ($('home-favorites-count')) $('home-favorites-count').textContent = appState.favorites.length;
   if ($('home-upcoming-count')) $('home-upcoming-count').textContent = upcomingMatches.length;
@@ -498,13 +498,13 @@ function renderHome() {
   if ($('home-next-matches')) {
     $('home-next-matches').innerHTML = upcomingMatches.length
       ? upcomingMatches.slice(0, 4).map((match) => renderMatchCard(match, true)).join('')
-      : '<div class="empty-state">No hay partidos prÃ³ximos cargados todavÃ­a.</div>';
+      : '<div class="empty-state">No hay partidos próximos cargados todavía.</div>';
   }
 
   if ($('home-tips-preview')) {
     $('home-tips-preview').innerHTML = latestTips.length
       ? latestTips.slice(0, 4).map(renderMiniTip).join('')
-      : '<div class="empty-state">TodavÃ­a no hay tips publicados.</div>';
+      : '<div class="empty-state">Todavía no hay tips publicados.</div>';
   }
 
   renderFavoriteChips('home-favorite-teams');
@@ -514,15 +514,15 @@ function renderMatchCard(match, showFollow = false) {
   const localAbbreviation = getTeamAbbreviation(match.local);
   const visitorAbbreviation = getTeamAbbreviation(match.visitante);
   const localFollow = showFollow && localAbbreviation
-    ? `<button class="follow-mini ${appState.favorites.includes(localAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(localAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.local)}">â˜…</button>`
+    ? `<button class="follow-mini ${appState.favorites.includes(localAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(localAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.local)}">★</button>`
     : '';
   const visitorFollow = showFollow && visitorAbbreviation
-    ? `<button class="follow-mini ${appState.favorites.includes(visitorAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(visitorAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.visitante)}">â˜…</button>`
+    ? `<button class="follow-mini ${appState.favorites.includes(visitorAbbreviation) ? 'is-following' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(visitorAbbreviation)}" aria-label="Seguir a ${escapeHtml(match.visitante)}">★</button>`
     : '';
 
   return `
     <article class="match-card">
-      <div class="match-meta"><span>Jornada ${escapeHtml(match.jornada ?? 'â€”')}</span><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span></div>
+      <div class="match-meta"><span>Jornada ${escapeHtml(match.jornada ?? '—')}</span><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span></div>
       <div class="match-main">
         <div class="match-team"><span class="team-mark green-mark"></span><strong>${escapeHtml(match.local)}</strong>${localFollow}</div>
         <div class="match-score ${getScoreClass(match)}">${escapeHtml(getScoreLabel(match))}</div>
@@ -566,7 +566,7 @@ function renderCalendar() {
 
   container.innerHTML = [...groups.entries()].sort((first, second) => first[0] - second[0]).map(([jornada, jornadaMatches]) => `
     <section class="calendar-group">
-      <div class="group-heading"><span>Jornada ${jornada || 'â€”'}</span><small>${jornadaMatches.length} partidos</small></div>
+      <div class="group-heading"><span>Jornada ${jornada || '—'}</span><small>${jornadaMatches.length} partidos</small></div>
       <div class="match-list">${jornadaMatches.map((match) => renderMatchCard(match, true)).join('')}</div>
     </section>
   `).join('');
@@ -582,7 +582,7 @@ function renderTips() {
     .filter((tip) => filter === 'all' || tip.categoria === filter);
 
   if (!latestTips.length) {
-    container.innerHTML = '<div class="empty-state">No hay tips para esta categorÃ­a.</div>';
+    container.innerHTML = '<div class="empty-state">No hay tips para esta categoría.</div>';
   } else {
     container.innerHTML = latestTips.map((tip) => renderTipCard(tip)).join('');
   }
@@ -595,12 +595,12 @@ function renderTipCard(tip) {
   const confidence = Math.min(100, Math.max(0, numericValue(tip.confianza)));
   return `
     <article class="tip-card ${meta.className}">
-      <div class="tip-card-top"><span class="category-label"><i class="category-dot ${meta.dot}"></i>${meta.label}</span><span>J${escapeHtml(tip.jornada ?? 'â€”')}</span></div>
+      <div class="tip-card-top"><span class="category-label"><i class="category-dot ${meta.dot}"></i>${meta.label}</span><span>J${escapeHtml(tip.jornada ?? '—')}</span></div>
       <h3>${escapeHtml(tip.local)} <span>vs</span> ${escapeHtml(tip.visitante)}</h3>
-      <div class="tip-prediction"><span>${escapeHtml(tip.tipo_apuesta || 'PredicciÃ³n')}</span><strong>${escapeHtml(tip.prediccion || 'Pendiente')}</strong></div>
+      <div class="tip-prediction"><span>${escapeHtml(tip.tipo_apuesta || 'Predicción')}</span><strong>${escapeHtml(tip.prediccion || 'Pendiente')}</strong></div>
       <div class="confidence-row"><span>Confianza estimada</span><strong>${confidence}%</strong></div>
       <div class="confidence-bar"><span style="width:${confidence}%"></span></div>
-      <details class="tip-reason"><summary>Â¿Por quÃ©?</summary><p>${escapeHtml(tip.razonamiento || 'Sin razonamiento registrado.')}</p></details>
+      <details class="tip-reason"><summary>¿Por qué?</summary><p>${escapeHtml(tip.razonamiento || 'Sin razonamiento registrado.')}</p></details>
     </article>
   `;
 }
@@ -637,12 +637,12 @@ function renderHistory() {
     .slice(0, 60);
 
   if (!historyRows.length) {
-    listContainer.innerHTML = '<div class="empty-state">TodavÃ­a no hay registros en el historial.</div>';
+    listContainer.innerHTML = '<div class="empty-state">Todavía no hay registros en el historial.</div>';
     return;
   }
 
   const notice = appState.historySource === 'fallback'
-    ? '<div class="info-state">El historial estÃ¡ listo visualmente. Ejecuta el SQL incluido para guardar acertados y fallados.</div>'
+    ? '<div class="info-state">El historial está listo visualmente. Ejecuta el SQL incluido para guardar acertados y fallados.</div>'
     : '';
 
   listContainer.innerHTML = notice + historyRows.map((row) => {
@@ -650,7 +650,7 @@ function renderHistory() {
     const resultLabel = result === 'acertado' ? 'ACERTADO' : result === 'fallado' ? 'FALLADO' : 'PENDIENTE';
     return `
       <article class="history-row">
-        <div><span class="history-jornada">J${escapeHtml(row.jornada ?? 'â€”')}</span><strong>${escapeHtml(row.local)} vs ${escapeHtml(row.visitante)}</strong><small>${escapeHtml(row.prediccion || 'PredicciÃ³n')} Â· ${escapeHtml(row.categoria || 'sin categorÃ­a')}</small></div>
+        <div><span class="history-jornada">J${escapeHtml(row.jornada ?? '—')}</span><strong>${escapeHtml(row.local)} vs ${escapeHtml(row.visitante)}</strong><small>${escapeHtml(row.prediccion || 'Predicción')} · ${escapeHtml(row.categoria || 'sin categoría')}</small></div>
         <span class="result-badge result-${result}">${resultLabel}</span>
       </article>
     `;
@@ -667,7 +667,7 @@ function renderStandings() {
   }
 
   container.innerHTML = `
-    <div class="card-heading standings-heading"><div><span class="eyebrow">CLASIFICACIÃ“N</span><h2>Tabla de posiciones</h2></div><span class="table-note">Top 8 / zona de liguilla</span></div>
+    <div class="card-heading standings-heading"><div><span class="eyebrow">CLASIFICACIÓN</span><h2>Tabla de posiciones</h2></div><span class="table-note">Top 8 / zona de liguilla</span></div>
     <div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>Club</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Forma</th></tr></thead><tbody>
       ${appState.standings.map((row, index) => `
         <tr class="${index < 8 ? 'playoff-row' : ''}">
@@ -699,8 +699,8 @@ function renderFavoriteChips(containerId) {
   if (!container) return;
   const favoriteTeams = appState.favorites.map(getTeamByAbbreviation).filter(Boolean);
   container.innerHTML = favoriteTeams.length
-    ? favoriteTeams.map((team) => `<button class="favorite-chip" type="button" data-action="set-view" data-view="calendario">${escapeHtml(team.nombre)}<span>â€º</span></button>`).join('')
-    : '<span class="empty-chip">Elige equipos desde la secciÃ³n Equipos.</span>';
+    ? favoriteTeams.map((team) => `<button class="favorite-chip" type="button" data-action="set-view" data-view="calendario">${escapeHtml(team.nombre)}<span>›</span></button>`).join('')
+    : '<span class="empty-chip">Elige equipos desde la sección Equipos.</span>';
 }
 
 function renderFavorites() {
@@ -710,14 +710,14 @@ function renderFavorites() {
 
   selector.innerHTML = appState.teams.map((team) => `
     <button class="team-choice ${appState.favorites.includes(team.abreviatura) ? 'selected' : ''}" type="button" data-action="toggle-favorite" data-team="${escapeHtml(team.abreviatura)}">
-      <span class="team-mark ${appState.favorites.includes(team.abreviatura) ? 'green-mark' : 'gray-mark'}"></span>${escapeHtml(team.nombre)}<span class="choice-star">â˜…</span>
+      <span class="team-mark ${appState.favorites.includes(team.abreviatura) ? 'green-mark' : 'gray-mark'}"></span>${escapeHtml(team.nombre)}<span class="choice-star">★</span>
     </button>
   `).join('');
 
   const favoriteTeams = appState.favorites.map(getTeamByAbbreviation).filter(Boolean);
   list.innerHTML = favoriteTeams.length
     ? favoriteTeams.map((team) => `<div class="favorite-row"><span><span class="team-mark green-mark"></span>${escapeHtml(team.nombre)}</span><button type="button" class="remove-btn" data-action="toggle-favorite" data-team="${escapeHtml(team.abreviatura)}">Quitar</button></div>`).join('')
-    : '<div class="empty-state">AÃºn no sigues ningÃºn equipo.</div>';
+    : '<div class="empty-state">Aún no sigues ningún equipo.</div>';
 }
 
 function renderComparison() {
@@ -749,7 +749,7 @@ function renderComparisonTeam(team, stats) {
   const trophies = palmares ? numericValue(palmares.liga_mx) + numericValue(palmares.copa_mx) + numericValue(palmares.concacaf) : 0;
   return `
     <div class="comparison-team"><div class="comparison-team-title"><span class="team-crest">${escapeHtml(team.abreviatura.slice(0, 3))}</span><h3>${escapeHtml(team.nombre)}</h3></div>
-      <div class="comparison-stat-grid"><div><span>PosiciÃ³n</span><strong>${stats ? appState.standings.indexOf(stats) + 1 : 'â€”'}</strong></div><div><span>Puntos</span><strong>${stats ? numericValue(stats.pts) : 'â€”'}</strong></div><div><span>DG</span><strong>${stats ? numericValue(stats.dg) : 'â€”'}</strong></div><div><span>TÃ­tulos registrados</span><strong>${trophies}</strong></div></div>
+      <div class="comparison-stat-grid"><div><span>Posición</span><strong>${stats ? appState.standings.indexOf(stats) + 1 : '—'}</strong></div><div><span>Puntos</span><strong>${stats ? numericValue(stats.pts) : '—'}</strong></div><div><span>DG</span><strong>${stats ? numericValue(stats.dg) : '—'}</strong></div><div><span>Títulos registrados</span><strong>${trophies}</strong></div></div>
     </div>
   `;
 }
@@ -767,8 +767,8 @@ function getHeadToHead(firstTeam, secondTeam) {
 }
 
 function renderHeadToHeadTable(matches, firstTeam, secondTeam) {
-  if (!matches.length) return '<div class="empty-state">TodavÃ­a no hay enfrentamientos entre estos equipos en los datos cargados.</div>';
-  return `<div class="h2h-list">${matches.map((match) => `<div class="h2h-row"><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span><strong>${escapeHtml(match.local)} ${getScoreLabel(match)} ${escapeHtml(match.visitante)}</strong><span class="h2h-result">${getMatchOutcome(match) || 'â€”'}</span></div>`).join('')}</div>`;
+  if (!matches.length) return '<div class="empty-state">Todavía no hay enfrentamientos entre estos equipos en los datos cargados.</div>';
+  return `<div class="h2h-list">${matches.map((match) => `<div class="h2h-row"><span>${escapeHtml(formatShortDate(match.fecha_hora_mx))}</span><strong>${escapeHtml(match.local)} ${getScoreLabel(match)} ${escapeHtml(match.visitante)}</strong><span class="h2h-result">${getMatchOutcome(match) || '—'}</span></div>`).join('')}</div>`;
 }
 
 function renderStreaks() {
@@ -794,19 +794,19 @@ function renderStreaks() {
 
   container.innerHTML = streaks.length ? streaks.map((item) => `
     <article class="streak-card"><div class="streak-title"><span class="team-mark green-mark"></span><strong>${escapeHtml(item.team.nombre)}</strong><div class="form-cell">${renderFormDots(item.team.nombre)}</div></div><div class="streak-values"><div><strong>${item.unbeaten}</strong><span>sin perder</span></div><div><strong>${item.scored}</strong><span>anotando</span></div></div></article>
-  `).join('') : '<div class="empty-state">AÃºn no hay suficientes partidos finalizados.</div>';
+  `).join('') : '<div class="empty-state">Aún no hay suficientes partidos finalizados.</div>';
 }
 
 function renderPalmares(abbreviation) {
   const container = $('palmares-results');
   if (!container) return;
   if (!abbreviation) {
-    container.innerHTML = '<div class="palmares-placeholder">Selecciona un equipo para consultar sus tÃ­tulos.</div>';
+    container.innerHTML = '<div class="palmares-placeholder">Selecciona un equipo para consultar sus títulos.</div>';
     return;
   }
   const data = appState.palmares.find((item) => item.abreviatura === abbreviation);
   if (!data) {
-    container.innerHTML = '<div class="empty-state">No hay palmarÃ©s registrado para este equipo.</div>';
+    container.innerHTML = '<div class="empty-state">No hay palmarés registrado para este equipo.</div>';
     return;
   }
   const items = [
@@ -816,19 +816,19 @@ function renderPalmares(abbreviation) {
     ['Leagues Cup', data.leagues_cup],
     ['Interamericana', data.interamericana],
     ['Campeones Cup', data.campeones_cup],
-    ['CampeÃ³n de Campeones', data.campeon_campeones],
+    ['Campeón de Campeones', data.campeon_campeones],
     ['Supercopa MX', data.supercopa_mx],
     ['Supercopa Liga MX', data.supercopa_liga_mx]
   ];
   const total = items.reduce((sum, item) => sum + numericValue(item[1]), 0);
-  container.innerHTML = `<div class="palmares-total"><span>${escapeHtml(data.equipo_nombre || getTeamName(abbreviation))}</span><strong>${total} tÃ­tulos registrados</strong></div><div class="palmares-mini-grid">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${numericValue(value)}</strong></div>`).join('')}</div>`;
+  container.innerHTML = `<div class="palmares-total"><span>${escapeHtml(data.equipo_nombre || getTeamName(abbreviation))}</span><strong>${total} títulos registrados</strong></div><div class="palmares-mini-grid">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${numericValue(value)}</strong></div>`).join('')}</div>`;
 }
 
 async function openTeamModal(abbreviation) {
   const modal = $('team-modal');
   if (!modal) return;
   modal.classList.remove('hidden');
-  $('dt-container').innerHTML = '<div class="modal-loading">Cargando director tÃ©cnico...</div>';
+  $('dt-container').innerHTML = '<div class="modal-loading">Cargando director técnico...</div>';
   $('roster-list-container').innerHTML = '<div class="modal-loading">Cargando plantilla...</div>';
 
   const [dtResponse, rosterResponse] = await Promise.all([
@@ -837,10 +837,10 @@ async function openTeamModal(abbreviation) {
   ]);
 
   if (dtResponse.error || !dtResponse.data) {
-    $('dt-container').innerHTML = '<div class="empty-state">No hay director tÃ©cnico registrado.</div>';
+    $('dt-container').innerHTML = '<div class="empty-state">No hay director técnico registrado.</div>';
   } else {
     const data = dtResponse.data;
-    $('dt-container').innerHTML = `<div class="dt-card"><span class="eyebrow">DIRECTOR TÃ‰CNICO</span><h2>${escapeHtml(data.dt_nombre)}</h2><p>${escapeHtml(data.nacionalidad || '')}${data.edad ? ` Â· ${numericValue(data.edad)} aÃ±os` : ''}</p>${data.sistema_tactico ? `<strong>Sistema ${escapeHtml(data.sistema_tactico)}</strong>` : ''}<small>${escapeHtml(data.estilo_ofensivo || '')}</small></div>`;
+    $('dt-container').innerHTML = `<div class="dt-card"><span class="eyebrow">DIRECTOR TÉCNICO</span><h2>${escapeHtml(data.dt_nombre)}</h2><p>${escapeHtml(data.nacionalidad || '')}${data.edad ? ` · ${numericValue(data.edad)} años` : ''}</p>${data.sistema_tactico ? `<strong>Sistema ${escapeHtml(data.sistema_tactico)}</strong>` : ''}<small>${escapeHtml(data.estilo_ofensivo || '')}</small></div>`;
   }
 
   if (rosterResponse.error || !rosterResponse.data?.length) {
@@ -853,7 +853,7 @@ async function openTeamModal(abbreviation) {
   $('roster-list-container').innerHTML = Object.entries(positionLabels).map(([position, label]) => {
     const positionPlayers = players.filter((player) => player.posicion === position);
     if (!positionPlayers.length) return '';
-    return `<section class="roster-section"><h3>${label}</h3>${positionPlayers.map((player) => `<div class="player-card"><strong>${escapeHtml(player.numero ?? 'â€”')}</strong><span>${escapeHtml(player.nombre)}</span><small>${escapeHtml(player.nacionalidad || '')}${player.edad ? ` Â· ${numericValue(player.edad)} aÃ±os` : ''}</small></div>`).join('')}</section>`;
+    return `<section class="roster-section"><h3>${label}</h3>${positionPlayers.map((player) => `<div class="player-card"><strong>${escapeHtml(player.numero ?? '—')}</strong><span>${escapeHtml(player.nombre)}</span><small>${escapeHtml(player.nacionalidad || '')}${player.edad ? ` · ${numericValue(player.edad)} años` : ''}</small></div>`).join('')}</section>`;
   }).join('');
 }
 
@@ -890,11 +890,11 @@ function renderQuiniela() {
   if ($('quiniela-total-cost')) $('quiniela-total-cost').textContent = `$${(combinations * baseAmount).toFixed(2)}`;
 
   if (!matches.length) {
-    container.innerHTML = '<div class="empty-state">No hay partidos prÃ³ximos disponibles para armar una quiniela.</div>';
+    container.innerHTML = '<div class="empty-state">No hay partidos próximos disponibles para armar una quiniela.</div>';
     return;
   }
 
-  const availabilityNote = matches.length < appState.quinielaSize ? `<div class="info-state">Solo hay ${matches.length} partidos prÃ³ximos cargados; la quiniela se ampliarÃ¡ cuando agregues mÃ¡s fechas.</div>` : '';
+  const availabilityNote = matches.length < appState.quinielaSize ? `<div class="info-state">Solo hay ${matches.length} partidos próximos cargados; la quiniela se ampliará cuando agregues más fechas.</div>` : '';
   container.innerHTML = availabilityNote + matches.map((match, index) => {
     const picks = appState.quinielaPicks[match.id] || ['1'];
     return `<article class="quiniela-row"><span class="quiniela-number">${index + 1}</span><div class="quiniela-match"><strong>${escapeHtml(match.local)}</strong><span>vs</span><strong>${escapeHtml(match.visitante)}</strong><small>${escapeHtml(formatDate(match.fecha_hora_mx))}</small></div><div class="quiniela-picks">${['1', 'X', '2'].map((pick) => `<button class="pick-btn ${picks.includes(pick) ? 'selected' : ''}" type="button" data-action="quiniela-pick" data-match="${escapeHtml(match.id)}" data-pick="${pick}">${pick}<small>${pick === '1' ? 'Local' : pick === 'X' ? 'Empate' : 'Visita'}</small></button>`).join('')}</div></article>`;
@@ -963,14 +963,14 @@ function renderSimulator() {
   const currentCutoff = appState.standings[7]?.pts ?? appState.standings[appState.standings.length - 1]?.pts ?? 0;
   if ($('simulator-cutoff')) $('simulator-cutoff').textContent = `${numericValue(currentCutoff)} puntos`;
 
-  matchesContainer.innerHTML = matches.length ? matches.map((match) => `<div class="sim-match-row"><div><strong>${escapeHtml(match.local)}</strong><span>vs</span><strong>${escapeHtml(match.visitante)}</strong><small>${escapeHtml(formatDate(match.fecha_hora_mx))}</small></div><select class="sim-select" data-simulator-match="${escapeHtml(match.id)}"><option value="">Sin cambio</option><option value="1">Gana local</option><option value="X">Empate</option><option value="2">Gana visitante</option></select></div>`).join('') : '<div class="empty-state">No hay partidos prÃ³ximos para simular.</div>';
+  matchesContainer.innerHTML = matches.length ? matches.map((match) => `<div class="sim-match-row"><div><strong>${escapeHtml(match.local)}</strong><span>vs</span><strong>${escapeHtml(match.visitante)}</strong><small>${escapeHtml(formatDate(match.fecha_hora_mx))}</small></div><select class="sim-select" data-simulator-match="${escapeHtml(match.id)}"><option value="">Sin cambio</option><option value="1">Gana local</option><option value="X">Empate</option><option value="2">Gana visitante</option></select></div>`).join('') : '<div class="empty-state">No hay partidos próximos para simular.</div>';
   matchesContainer.querySelectorAll('[data-simulator-match]').forEach((select) => {
     select.value = appState.simulatorPicks[select.dataset.simulatorMatch] || '';
     select.addEventListener('change', (event) => updateSimulatorPick(event.target.dataset.simulatorMatch, event.target.value));
   });
 
   const simulated = calculateSimulatedStandings();
-  resultsContainer.innerHTML = simulated.length ? `<div class="simulator-result-heading"><span>ProyecciÃ³n con tus resultados</span><small>Las filas verdes quedan dentro del Top 8</small></div><div class="simulation-table">${simulated.map((row, index) => { const needed = Math.max(0, numericValue(currentCutoff) - row.pts + 1); return `<div class="simulation-row ${index < 8 ? 'inside-playoff' : ''}"><span class="simulation-position">${index + 1}</span><strong>${escapeHtml(row.club)}</strong><span>${row.pts} pts</span><span>${row.dg >= 0 ? '+' : ''}${row.dg} DG</span><span class="simulation-status">${index < 8 ? 'Dentro del Top 8' : `Necesita ${needed} pts`}</span></div>`; }).join('')}</div>` : '<div class="empty-state">La tabla simulada aparecerÃ¡ cuando haya posiciones cargadas.</div>';
+  resultsContainer.innerHTML = simulated.length ? `<div class="simulator-result-heading"><span>Proyección con tus resultados</span><small>Las filas verdes quedan dentro del Top 8</small></div><div class="simulation-table">${simulated.map((row, index) => { const needed = Math.max(0, numericValue(currentCutoff) - row.pts + 1); return `<div class="simulation-row ${index < 8 ? 'inside-playoff' : ''}"><span class="simulation-position">${index + 1}</span><strong>${escapeHtml(row.club)}</strong><span>${row.pts} pts</span><span>${row.dg >= 0 ? '+' : ''}${row.dg} DG</span><span class="simulation-status">${index < 8 ? 'Dentro del Top 8' : `Necesita ${needed} pts`}</span></div>`; }).join('')}</div>` : '<div class="empty-state">La tabla simulada aparecerá cuando haya posiciones cargadas.</div>';
 }
 
 function registerPwa() {

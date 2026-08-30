@@ -21,14 +21,14 @@
         </span>
       </a>
 
-      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Abrir menÃº" aria-expanded="false">â˜°</button>
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
 
-      <nav id="main-nav" class="main-nav" aria-label="NavegaciÃ³n principal">
+      <nav id="main-nav" class="main-nav" aria-label="Navegación principal">
         <a class="nav-link active" href="#inicio" data-view-link="inicio">Inicio</a>
         <a class="nav-link" href="#calendario" data-view-link="calendario">Calendario</a>
         <a class="nav-link" href="#tips" data-view-link="tips">Tips</a>
         <a class="nav-link" href="#equipos" data-view-link="equipos">Equipos</a>
-        <a class="nav-link" href="#analisis" data-view-link="analisis">AnÃ¡lisis</a>
+        <a class="nav-link" href="#analisis" data-view-link="analisis">Análisis</a>
         <a class="nav-link" href="#herramientas" data-view-link="herramientas">Herramientas</a>
       </nav>
 
@@ -36,7 +36,7 @@
         <div class="global-search">
           <input id="team-search-input" type="search" list="team-list" placeholder="Buscar equipo..." autocomplete="off">
           <datalist id="team-list"></datalist>
-          <button id="search-team-btn" type="button" aria-label="Buscar equipo">âŒ•</button>
+          <button id="search-team-btn" type="button" aria-label="Buscar equipo">⌕</button>
         </div>
         <button id="install-app-btn" class="install-btn hidden" type="button">Instalar app</button>
       </div>
@@ -45,7 +45,7 @@
 
   <main>
     <div class="page-container status-container">
-      <div id="connection-status" class="status-card status-loading">Verificando conexiÃ³n con Supabase...</div>
+      <div id="connection-status" class="status-card status-loading">Verificando conexión con Supabase...</div>
       <span id="last-updated" class="last-updated">Sincronizando datos...</span>
     </div>
 
@@ -53,11 +53,11 @@
       <div class="page-container">
         <div class="home-hero">
           <div class="hero-copy">
-            <span class="eyebrow">LIGA MX / CENTRO DE ANÃLISIS</span>
+            <span class="eyebrow">LIGA MX / CENTRO DE ANÁLISIS</span>
             <h1>Tu jornada, explicada con datos.</h1>
-            <p>Consulta partidos, entiende los tips y arma tu quiniela con informaciÃ³n clara, actualizada y sin esconder los resultados.</p>
+            <p>Consulta partidos, entiende los tips y arma tu quiniela con información clara, actualizada y sin esconder los resultados.</p>
             <div class="hero-actions">
-              <button class="primary-btn" type="button" data-action="set-view" data-view="calendario">Ver prÃ³ximos partidos</button>
+              <button class="primary-btn" type="button" data-action="set-view" data-view="calendario">Ver próximos partidos</button>
               <button class="ghost-btn" type="button" data-action="set-view" data-view="tips">Explorar tips</button>
             </div>
             <div class="favorite-strip">
@@ -68,7 +68,7 @@
           <div class="hero-board">
             <div class="blueprint-lines" aria-hidden="true"></div>
             <span class="board-label">JORNADA ACTUAL</span>
-            <strong id="home-jornada" class="board-value">â€”</strong>
+            <strong id="home-jornada" class="board-value">—</strong>
             <span id="home-hero-caption" class="board-caption">Preparando el centro de partido...</span>
             <div class="board-orbit" aria-hidden="true"><span></span></div>
           </div>
@@ -81,14 +81,14 @@
             <span class="stat-note">Guardados en este dispositivo</span>
           </article>
           <article class="stat-card stat-blue">
-            <span class="stat-label">Partidos prÃ³ximos</span>
+            <span class="stat-label">Partidos próximos</span>
             <strong id="home-upcoming-count">0</strong>
-            <span class="stat-note">Con informaciÃ³n disponible</span>
+            <span class="stat-note">Con información disponible</span>
           </article>
           <article class="stat-card stat-red">
             <span class="stat-label">Tips publicados</span>
             <strong id="home-tips-count">0</strong>
-            <span class="stat-note">En la jornada mÃ¡s reciente</span>
+            <span class="stat-note">En la jornada más reciente</span>
           </article>
           <article class="stat-card stat-yellow">
             <span class="stat-label">Historial resuelto</span>
@@ -101,7 +101,7 @@
           <article class="surface-card">
             <div class="card-heading">
               <div>
-                <span class="eyebrow">PRÃ“XIMAMENTE</span>
+                <span class="eyebrow">PRÓXIMAMENTE</span>
                 <h2>Los siguientes partidos</h2>
               </div>
               <button class="text-btn" type="button" data-action="set-view" data-view="calendario">Ver todos</button>
@@ -111,7 +111,7 @@
           <article class="surface-card">
             <div class="card-heading">
               <div>
-                <span class="eyebrow">LECTURA RÃPIDA</span>
+                <span class="eyebrow">LECTURA RÁPIDA</span>
                 <h2>Tips de la jornada</h2>
               </div>
               <button class="text-btn" type="button" data-action="set-view" data-view="tips">Ver todos</button>
@@ -128,7 +128,7 @@
           <div>
             <span class="eyebrow">PARTIDOS</span>
             <h1>Calendario inteligente</h1>
-            <p>Filtra la jornada completa o revisa Ãºnicamente los equipos que sigues.</p>
+            <p>Filtra la jornada completa o revisa únicamente los equipos que sigues.</p>
           </div>
           <div class="heading-decoration stadium-mini" aria-hidden="true"></div>
         </div>
@@ -136,7 +136,7 @@
           <label class="field-label" for="calendar-filter">Mostrar</label>
           <select id="calendar-filter" class="select-control">
             <option value="all">Todos los partidos</option>
-            <option value="future">Solo prÃ³ximos</option>
+            <option value="future">Solo próximos</option>
             <option value="favorites">Mis equipos</option>
           </select>
           <label class="field-label" for="calendar-team-filter">Equipo</label>
@@ -155,7 +155,7 @@
           <div>
             <span class="eyebrow">PREDICCIONES</span>
             <h1>Tips con contexto</h1>
-            <p>Una recomendaciÃ³n vale mÃ¡s cuando puedes entenderla y despuÃ©s comprobarla.</p>
+            <p>Una recomendación vale más cuando puedes entenderla y después comprobarla.</p>
           </div>
           <div class="confidence-legend">
             <span><i class="legend-dot green"></i>Base</span>
@@ -167,7 +167,7 @@
           <button class="subnav-btn active" type="button" data-tips-panel="current">Tips actuales</button>
           <button class="subnav-btn" type="button" data-tips-panel="history">Historial transparente</button>
           <select id="tips-filter" class="select-control compact-select">
-            <option value="all">Todas las categorÃ­as</option>
+            <option value="all">Todas las categorías</option>
             <option value="base">Base</option>
             <option value="zona_gris">Zona Gris</option>
             <option value="sorpresa">Sorpresa</option>
@@ -189,7 +189,7 @@
           <div>
             <span class="eyebrow">EQUIPOS</span>
             <h1>La liga en una sola vista</h1>
-            <p>Tabla, plantillas, palmarÃ©s y tus equipos favoritos en un mismo espacio.</p>
+            <p>Tabla, plantillas, palmarés y tus equipos favoritos en un mismo espacio.</p>
           </div>
           <div class="fans-decoration" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
         </div>
@@ -201,9 +201,9 @@
                 <span class="eyebrow">PERSONALIZA</span>
                 <h2>Mis equipos</h2>
               </div>
-              <span class="card-icon">â˜…</span>
+              <span class="card-icon">★</span>
             </div>
-            <p class="helper-text">Guarda tus clubes favoritos. Se conserva Ãºnicamente en este navegador.</p>
+            <p class="helper-text">Guarda tus clubes favoritos. Se conserva únicamente en este navegador.</p>
             <div id="favorite-team-selector" class="favorite-team-selector"></div>
             <div id="favorite-team-list" class="favorite-team-list"></div>
           </article>
@@ -211,15 +211,15 @@
             <div class="card-heading">
               <div>
                 <span class="eyebrow">PERFILES</span>
-                <h2>Plantillas y palmarÃ©s</h2>
+                <h2>Plantillas y palmarés</h2>
               </div>
-              <span class="card-icon">â—†</span>
+              <span class="card-icon">◆</span>
             </div>
             <label class="field-label" for="team-select">Ver plantilla</label>
             <select id="team-select" class="select-control">
               <option value="">Selecciona un equipo...</option>
             </select>
-            <label class="field-label spaced-label" for="palmares-select">Ver palmarÃ©s</label>
+            <label class="field-label spaced-label" for="palmares-select">Ver palmarés</label>
             <select id="palmares-select" class="select-control">
               <option value="">Selecciona un equipo...</option>
             </select>
@@ -233,9 +233,9 @@
       <div class="page-container">
         <div class="page-heading">
           <div>
-            <span class="eyebrow">ANÃLISIS</span>
+            <span class="eyebrow">ANÁLISIS</span>
             <h1>Compara antes de decidir</h1>
-            <p>Enfrenta dos equipos con sus nÃºmeros disponibles y revisa la racha activa de la liga.</p>
+            <p>Enfrenta dos equipos con sus números disponibles y revisa la racha activa de la liga.</p>
           </div>
           <div class="radar-decoration" aria-hidden="true"><span></span></div>
         </div>
@@ -259,7 +259,7 @@
               <span class="eyebrow">SEGUIMIENTO</span>
               <h2>Rachas activas</h2>
             </div>
-            <span class="live-chip">â— DATOS DISPONIBLES</span>
+            <span class="live-chip">● DATOS DISPONIBLES</span>
           </div>
           <div id="active-streaks" class="streak-grid"></div>
         </article>
@@ -281,7 +281,7 @@
           <div class="card-heading tool-heading">
             <div>
               <span class="eyebrow">QUINIELA</span>
-              <h2>Arma tu combinaciÃ³n</h2>
+              <h2>Arma tu combinación</h2>
             </div>
             <div class="tool-controls">
               <label class="field-label" for="quiniela-size">Partidos</label>
@@ -296,10 +296,10 @@
             <div><span>Dobles</span><strong id="quiniela-doubles">0</strong></div>
             <div><span>Triples</span><strong id="quiniela-triples">0</strong></div>
             <div><span>Combinaciones</span><strong id="quiniela-combinations">1</strong></div>
-            <label><span>Importe por combinaciÃ³n</span><input id="quiniela-base-amount" type="number" min="0" step="0.01" value="1"></label>
+            <label><span>Importe por combinación</span><input id="quiniela-base-amount" type="number" min="0" step="0.01" value="1"></label>
             <div><span>Estimado</span><strong id="quiniela-total-cost">$1.00</strong></div>
           </div>
-          <p class="tool-note">La cantidad de combinaciones se calcula como dobles Ã— triples. El importe es editable y no representa una tarifa oficial.</p>
+          <p class="tool-note">La cantidad de combinaciones se calcula como dobles × triples. El importe es editable y no representa una tarifa oficial.</p>
           <div id="quiniela-matches" class="quiniela-list"></div>
         </article>
 
@@ -307,11 +307,11 @@
           <div class="card-heading tool-heading">
             <div>
               <span class="eyebrow">SIMULADOR</span>
-              <h2>Â¿QuÃ© necesita cada equipo?</h2>
+              <h2>¿Qué necesita cada equipo?</h2>
             </div>
             <button id="simulator-reset" class="text-btn" type="button">Restablecer</button>
           </div>
-          <div class="simulator-callout"><strong id="simulator-cutoff">â€”</strong><span>puntos marcan actualmente el corte del octavo lugar.</span></div>
+          <div class="simulator-callout"><strong id="simulator-cutoff">—</strong><span>puntos marcan actualmente el corte del octavo lugar.</span></div>
           <div id="simulator-matches" class="simulator-matches"></div>
           <div id="simulator-results" class="simulator-results"></div>
         </article>
@@ -321,7 +321,7 @@
 
   <div id="team-modal" class="team-modal hidden" role="dialog" aria-modal="true" aria-label="Perfil del equipo">
     <div class="team-modal-content">
-      <button id="close-modal" class="close-modal" type="button" aria-label="Cerrar">Ã—</button>
+      <button id="close-modal" class="close-modal" type="button" aria-label="Cerrar">×</button>
       <div id="dt-container"></div>
       <div id="roster-list-container"></div>
     </div>
