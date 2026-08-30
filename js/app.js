@@ -27,6 +27,14 @@ const categoryMeta = {
   sorpresa: { label: 'Sorpresa', className: 'tip-sorpresa', dot: 'red' }
 };
 
+function getCategoryKey(value) {
+  const category = normalizeText(value).replace(/\s+/g, '_');
+  if (category.includes('zona') && category.includes('gris')) return 'zona_gris';
+  if (category.includes('sorpresa')) return 'sorpresa';
+  if (category.includes('base')) return 'base';
+  return category;
+}
+
 const $ = (id) => document.getElementById(id);
 
 function safeArray(value) {
@@ -152,6 +160,18 @@ function getCurrentJornada() {
     .map((tip) => numericValue(tip.jornada, 0))
     .filter(Boolean);
   return tipJornadas.length ? Math.max(...tipJornadas) : '—';
+}
+
+function getTipsJornada() {
+  const currentJornada = numericValue(getCurrentJornada(), 0);
+  const tipJornadas = [...new Set(appState.tips.map((tip) => numericValue(tip.jornada, 0)).filter(Boolean))];
+  if (!tipJornadas.length) return currentJornada;
+
+  const nearbyJornadas = currentJornada
+    ? tipJornadas.filter((jornada) => jornada >= currentJornada && jornada <= currentJornada + 1)
+    : tipJornadas;
+  if (nearbyJornadas.length) return Math.max(...nearbyJornadas);
+  return currentJornada || Math.max(...tipJornadas);
 }
 
 function getUpcomingMatches() {
@@ -338,13 +358,23 @@ function getPredictedOutcome(row, match) {
   if (/(?:ambos.*(?:si|anotan|marcan)|btts.*(?:yes|si))/.test(text)) return localGoals > 0 && visitorGoals > 0 ? 'acertado' : 'fallado';
   if (/(?:ambos.*no|btts.*no)/.test(text)) return localGoals === 0 || visitorGoals === 0 ? 'acertado' : 'fallado';
 
+  const mentionsLocalTeam = sameTeamName(prediction, match.local) || /\blocal\b/.test(text);
+  const mentionsVisitorTeam = sameTeamName(prediction, match.visitante) || /\b(?:visitante|visita)\b/.test(text);
+  const localDoesNotWin = mentionsLocalTeam && /\bno gan\w*/.test(text);
+  const localDoesNotLose = mentionsLocalTeam && /\bno pierd\w*/.test(text);
+  const visitorDoesNotWin = mentionsVisitorTeam && /\bno gan\w*/.test(text);
+  const visitorDoesNotLose = mentionsVisitorTeam && /\bno pierd\w*/.test(text);
+  const drawAndVisitor = /(?:empate.*(?:derrota|visita|visitante)|(?:derrota|visita|visitante).*empate)/.test(text);
+  const drawAndLocal = /(?:empate.*local|local.*empate)/.test(text);
+  if (localDoesNotWin || visitorDoesNotLose || drawAndVisitor) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
+  if (localDoesNotLose || visitorDoesNotWin || drawAndLocal) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b1x\b|local.*empate|empate.*local)/.test(text)) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\bx2\b|empate.*visitante|visitante.*empate)/.test(text)) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b12\b|local.*visitante|visitante.*local)/.test(text)) return ['1', '2'].includes(outcome) ? 'acertado' : 'fallado';
 
-  const pickedLocal = prediction === '1' || prediction === 'local' || sameTeamName(prediction, match.local) || /(?:gana|victoria|triunfo).*local|local.*(?:gana|victoria|triunfo)/.test(text);
+  const pickedLocal = prediction === '1' || prediction === 'local' || mentionsLocalTeam || /(?:gana|victoria|triunfo).*local|local.*(?:gana|victoria|triunfo)/.test(text);
   const pickedDraw = prediction === 'x' || prediction === 'empate' || /\bempate\b/.test(text);
-  const pickedVisitor = prediction === '2' || prediction === 'visitante' || sameTeamName(prediction, match.visitante) || /(?:gana|victoria|triunfo).*visitante|visitante.*(?:gana|victoria|triunfo)/.test(text);
+  const pickedVisitor = prediction === '2' || prediction === 'visitante' || mentionsVisitorTeam || /(?:gana|victoria|triunfo).*visitante|visitante.*(?:gana|victoria|triunfo)/.test(text);
   if (pickedLocal) return outcome === '1' ? 'acertado' : 'fallado';
   if (pickedDraw) return outcome === 'x' ? 'acertado' : 'fallado';
   if (pickedVisitor) return outcome === '2' ? 'acertado' : 'fallado';
@@ -598,7 +628,7 @@ function renderHome() {
   const currentJornada = numericValue(getCurrentJornada(), 0);
   const upcomingMatches = getUpcomingMatches();
   const currentMatches = upcomingMatches.filter((match) => numericValue(match.jornada, 0) === currentJornada);
-  const latestJornada = currentJornada || (appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0);
+  const latestJornada = getTipsJornada();
   const latestTips = appState.tips.filter((tip) => numericValue(tip.jornada) === latestJornada);
   const historyStats = calculateHistoryStats(appState.history);
 
@@ -647,7 +677,7 @@ function renderMatchCard(match, showFollow = false) {
 }
 
 function renderMiniTip(tip) {
-  const meta = categoryMeta[tip.categoria] || categoryMeta.base;
+  const meta = categoryMeta[getCategoryKey(tip.categoria)] || categoryMeta.base;
   return `
     <article class="mini-tip ${meta.className}">
       <div><span class="category-dot ${meta.dot}"></span><strong>${escapeHtml(tip.local)} vs ${escapeHtml(tip.visitante)}</strong></div>
@@ -690,11 +720,10 @@ function renderTips() {
   const container = $('tips-container');
   if (!container) return;
   const filter = $('tips-filter')?.value || 'all';
-  const currentJornada = numericValue(getCurrentJornada(), 0);
-  const latestJornada = currentJornada || (appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0);
+  const latestJornada = getTipsJornada();
   const latestTips = appState.tips
     .filter((tip) => numericValue(tip.jornada) === latestJornada)
-    .filter((tip) => filter === 'all' || tip.categoria === filter);
+    .filter((tip) => filter === 'all' || getCategoryKey(tip.categoria) === filter);
 
   if (!latestTips.length) {
     container.innerHTML = '<div class="empty-state">No hay tips para esta categoría.</div>';
@@ -706,7 +735,7 @@ function renderTips() {
 }
 
 function renderTipCard(tip) {
-  const meta = categoryMeta[tip.categoria] || categoryMeta.base;
+  const meta = categoryMeta[getCategoryKey(tip.categoria)] || categoryMeta.base;
   const confidence = Math.min(100, Math.max(0, numericValue(tip.confianza)));
   return `
     <article class="tip-card ${meta.className}">
@@ -738,7 +767,7 @@ function renderHistory() {
   const rows = appState.history;
   const overall = calculateHistoryStats(rows);
   const categoryStats = Object.entries(categoryMeta).map(([category, meta]) => {
-    const stats = calculateHistoryStats(rows.filter((row) => row.categoria === category));
+    const stats = calculateHistoryStats(rows.filter((row) => getCategoryKey(row.categoria) === category));
     return `<article class="history-metric ${meta.className}"><span class="category-label"><i class="category-dot ${meta.dot}"></i>${meta.label}</span><strong>${stats.accuracy}%</strong><small>${stats.hits}/${stats.total} comprobados</small></article>`;
   }).join('');
 
