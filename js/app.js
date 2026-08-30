@@ -74,12 +74,30 @@ function formatShortDate(value) {
   return formatDate(value, { year: undefined, hour: undefined, minute: undefined });
 }
 
+function hasRecordedScore(match) {
+  const localGoals = match?.goles_local;
+  const visitorGoals = match?.goles_visitante;
+  return localGoals !== null && localGoals !== undefined && String(localGoals).trim() !== ''
+    && visitorGoals !== null && visitorGoals !== undefined && String(visitorGoals).trim() !== '';
+}
+
 function isFinalMatch(match) {
-  return String(match?.estado || '').toLowerCase() === 'finalizado';
+  const state = normalizeText(match?.estado);
+  if (state.includes('finaliz') || state.includes('termin') || state === 'finished' || state === 'completed' || state === 'played') return true;
+  const matchDate = new Date(match?.fecha_hora_mx || 0).getTime();
+  return !state && hasRecordedScore(match) && Number.isFinite(matchDate) && matchDate < Date.now();
 }
 
 function isLiveMatch(match) {
-  return String(match?.estado || '').toLowerCase() === 'en_vivo';
+  const state = normalizeText(match?.estado);
+  return state.includes('en vivo') || state === 'live';
+}
+
+function isCurrentOrFutureMatch(match) {
+  if (isLiveMatch(match)) return true;
+  const matchDate = new Date(match?.fecha_hora_mx || 0).getTime();
+  if (!Number.isFinite(matchDate) || matchDate === 0) return true;
+  return matchDate >= Date.now() - (6 * 60 * 60 * 1000);
 }
 
 function getTeamByAbbreviation(abbreviation) {
@@ -105,15 +123,27 @@ function matchContainsTeam(match, abbreviation) {
 }
 
 function getCurrentJornada() {
-  const jornadas = [...appState.tips, ...appState.matches]
-    .map((item) => numericValue(item.jornada, 0))
+  const activeJornadas = appState.matches
+    .filter((match) => !isFinalMatch(match) && isCurrentOrFutureMatch(match))
+    .map((match) => numericValue(match.jornada, 0))
     .filter(Boolean);
-  return jornadas.length ? Math.max(...jornadas) : '—';
+
+  if (activeJornadas.length) return Math.min(...activeJornadas);
+
+  const matchJornadas = appState.matches
+    .map((match) => numericValue(match.jornada, 0))
+    .filter(Boolean);
+  if (matchJornadas.length) return Math.max(...matchJornadas);
+
+  const tipJornadas = appState.tips
+    .map((tip) => numericValue(tip.jornada, 0))
+    .filter(Boolean);
+  return tipJornadas.length ? Math.max(...tipJornadas) : '—';
 }
 
 function getUpcomingMatches() {
   return appState.matches
-    .filter((match) => !isFinalMatch(match))
+    .filter((match) => !isFinalMatch(match) && isCurrentOrFutureMatch(match))
     .sort((first, second) => new Date(first.fecha_hora_mx || 0) - new Date(second.fecha_hora_mx || 0));
 }
 
@@ -251,6 +281,78 @@ async function loadTips() {
   appState.tips = safeArray(data).sort((first, second) => numericValue(second.jornada) - numericValue(first.jornada));
 }
 
+function normalizeTipResult(value) {
+  const result = normalizeText(value);
+  if (['acertado', 'acierto', 'ganado', 'ganada', 'win', 'won'].includes(result)) return 'acertado';
+  if (['fallado', 'fallo', 'perdido', 'perdida', 'loss', 'lost'].includes(result)) return 'fallado';
+  return '';
+}
+
+function findHistoryMatch(row) {
+  if (row.partido_id !== null && row.partido_id !== undefined) {
+    const matchById = appState.matches.find((match) => String(match.id) === String(row.partido_id));
+    if (matchById) return matchById;
+  }
+
+  const rowLocal = normalizeText(row.local);
+  const rowVisitor = normalizeText(row.visitante);
+  const rowJornada = numericValue(row.jornada, 0);
+  return appState.matches.find((match) => {
+    const sameTeams = normalizeText(match.local) === rowLocal && normalizeText(match.visitante) === rowVisitor;
+    const sameJornada = !rowJornada || numericValue(match.jornada, 0) === rowJornada;
+    return sameTeams && sameJornada;
+  });
+}
+
+function getPredictedOutcome(row, match) {
+  const prediction = normalizeText(row.prediccion);
+  const betType = normalizeText(row.tipo_apuesta);
+  const text = `${prediction} ${betType}`.trim();
+  const outcome = getMatchOutcome(match);
+  if (!outcome) return '';
+
+  const localGoals = numericValue(match.goles_local);
+  const visitorGoals = numericValue(match.goles_visitante);
+  const totalGoals = localGoals + visitorGoals;
+  const exactScore = prediction.match(/(?:^|\s)(\d+)\s*[-:]\s*(\d+)(?:\s|$)/);
+  if (exactScore) return localGoals === Number(exactScore[1]) && visitorGoals === Number(exactScore[2]) ? 'acertado' : 'fallado';
+
+  const over = text.match(/(?:mas|over)\s*(?:de|del)?\s*(\d+(?:\.\d+)?)/);
+  if (over) return totalGoals > Number(over[1]) ? 'acertado' : 'fallado';
+  const under = text.match(/(?:menos|under)\s*(?:de|del)?\s*(\d+(?:\.\d+)?)/);
+  if (under) return totalGoals < Number(under[1]) ? 'acertado' : 'fallado';
+
+  if (/(?:ambos.*(?:si|anotan|marcan)|btts.*(?:yes|si))/.test(text)) return localGoals > 0 && visitorGoals > 0 ? 'acertado' : 'fallado';
+  if (/(?:ambos.*no|btts.*no)/.test(text)) return localGoals === 0 || visitorGoals === 0 ? 'acertado' : 'fallado';
+
+  if (/(?:\b1x\b|local.*empate|empate.*local)/.test(text)) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
+  if (/(?:\bx2\b|empate.*visitante|visitante.*empate)/.test(text)) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
+  if (/(?:\b12\b|local.*visitante|visitante.*local)/.test(text)) return ['1', '2'].includes(outcome) ? 'acertado' : 'fallado';
+
+  const localName = normalizeText(match.local);
+  const visitorName = normalizeText(match.visitante);
+  const pickedLocal = prediction === '1' || prediction === 'local' || prediction === localName || /(?:gana|victoria|triunfo).*local|local.*(?:gana|victoria|triunfo)/.test(text);
+  const pickedDraw = prediction === 'x' || prediction === 'empate' || /\bempate\b/.test(text);
+  const pickedVisitor = prediction === '2' || prediction === 'visitante' || prediction === visitorName || /(?:gana|victoria|triunfo).*visitante|visitante.*(?:gana|victoria|triunfo)/.test(text);
+  if (pickedLocal) return outcome === '1' ? 'acertado' : 'fallado';
+  if (pickedDraw) return outcome === 'x' ? 'acertado' : 'fallado';
+  if (pickedVisitor) return outcome === '2' ? 'acertado' : 'fallado';
+  return '';
+}
+
+function resolveHistoryResult(row) {
+  const explicitResult = normalizeTipResult(row.resultado);
+  if (explicitResult) return { ...row, resultado: explicitResult };
+
+  const match = findHistoryMatch(row);
+  const calculatedResult = match && isFinalMatch(match) ? getPredictedOutcome(row, match) : '';
+  return { ...row, resultado: calculatedResult || 'pendiente' };
+}
+
+function resolveHistoryRows(rows) {
+  return safeArray(rows).map(resolveHistoryResult);
+}
+
 async function loadHistory() {
   const { data, error } = await supabaseClient
     .from('tips_historial')
@@ -258,12 +360,12 @@ async function loadHistory() {
     .order('jornada', { ascending: false });
 
   if (!error && data) {
-    appState.history = safeArray(data);
+    appState.history = resolveHistoryRows(data);
     appState.historySource = 'tips_historial';
     return;
   }
 
-  appState.history = appState.tips.map((tip) => ({ ...tip, resultado: 'pendiente' }));
+  appState.history = resolveHistoryRows(appState.tips);
   appState.historySource = 'fallback';
 }
 
@@ -482,16 +584,17 @@ function populateSelectors() {
 }
 
 function renderHome() {
-  const currentJornada = getCurrentJornada();
+  const currentJornada = numericValue(getCurrentJornada(), 0);
   const upcomingMatches = getUpcomingMatches();
-  const latestJornada = appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0;
+  const currentMatches = upcomingMatches.filter((match) => numericValue(match.jornada, 0) === currentJornada);
+  const latestJornada = currentJornada || (appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0);
   const latestTips = appState.tips.filter((tip) => numericValue(tip.jornada) === latestJornada);
   const historyStats = calculateHistoryStats(appState.history);
 
-  if ($('home-jornada')) $('home-jornada').textContent = currentJornada === '—' ? '—' : `J${currentJornada}`;
-  if ($('home-hero-caption')) $('home-hero-caption').textContent = upcomingMatches.length ? `${upcomingMatches.length} partidos esperan tu lectura.` : 'Consulta los partidos disponibles.';
+  if ($('home-jornada')) $('home-jornada').textContent = currentJornada ? `J${currentJornada}` : '—';
+  if ($('home-hero-caption')) $('home-hero-caption').textContent = currentMatches.length ? `${currentMatches.length} partidos pendientes de J${currentJornada}.` : 'Consulta los partidos disponibles.';
   if ($('home-favorites-count')) $('home-favorites-count').textContent = appState.favorites.length;
-  if ($('home-upcoming-count')) $('home-upcoming-count').textContent = upcomingMatches.length;
+  if ($('home-upcoming-count')) $('home-upcoming-count').textContent = currentMatches.length;
   if ($('home-tips-count')) $('home-tips-count').textContent = latestTips.length;
   if ($('home-history-count')) $('home-history-count').textContent = `${historyStats.accuracy}%`;
 
@@ -576,7 +679,8 @@ function renderTips() {
   const container = $('tips-container');
   if (!container) return;
   const filter = $('tips-filter')?.value || 'all';
-  const latestJornada = appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0;
+  const currentJornada = numericValue(getCurrentJornada(), 0);
+  const latestJornada = currentJornada || (appState.tips.length ? Math.max(...appState.tips.map((tip) => numericValue(tip.jornada))) : 0);
   const latestTips = appState.tips
     .filter((tip) => numericValue(tip.jornada) === latestJornada)
     .filter((tip) => filter === 'all' || tip.categoria === filter);
