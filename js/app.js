@@ -211,8 +211,20 @@ function getMatchOutcome(match) {
   const localGoals = numericValue(match.goles_local);
   const visitorGoals = numericValue(match.goles_visitante);
   if (localGoals > visitorGoals) return '1';
-  if (localGoals === visitorGoals) return 'X';
+  if (localGoals === visitorGoals) return 'x';
   return '2';
+}
+
+function getCornerTotal(match) {
+  const directFields = ['corners_total', 'corner_total', 'tiros_esquina_total'];
+  const localFields = ['corners_local', 'corner_local', 'tiros_esquina_local'];
+  const visitorFields = ['corners_visitante', 'corner_visitante', 'tiros_esquina_visitante'];
+  const directField = directFields.find((field) => match?.[field] !== null && match?.[field] !== undefined && String(match[field]).trim() !== '');
+  if (directField) return numericValue(match[directField]);
+  const localField = localFields.find((field) => match?.[field] !== null && match?.[field] !== undefined && String(match[field]).trim() !== '');
+  const visitorField = visitorFields.find((field) => match?.[field] !== null && match?.[field] !== undefined && String(match[field]).trim() !== '');
+  if (localField && visitorField) return numericValue(match[localField]) + numericValue(match[visitorField]);
+  return null;
 }
 
 function getScoreLabel(match) {
@@ -340,6 +352,11 @@ function findHistoryMatch(row) {
 function getPredictedOutcome(row, match) {
   const prediction = normalizeText(row.prediccion);
   const betType = normalizeText(row.tipo_apuesta);
+  const combinedPredictions = prediction.split(/\s+(?:y|e)\s+/).filter(Boolean);
+  if (combinedPredictions.length > 1) {
+    const combinedResults = combinedPredictions.map((part) => getPredictedOutcome({ ...row, prediccion: part, tipo_apuesta: '' }, match));
+    if (combinedResults.every(Boolean)) return combinedResults.every((result) => result === 'acertado') ? 'acertado' : 'fallado';
+  }
   const text = `${prediction} ${betType}`.trim();
   const outcome = getMatchOutcome(match);
   if (!outcome) return '';
@@ -347,13 +364,15 @@ function getPredictedOutcome(row, match) {
   const localGoals = numericValue(match.goles_local);
   const visitorGoals = numericValue(match.goles_visitante);
   const totalGoals = localGoals + visitorGoals;
+  const isCornersMarket = /\b(?:corner|corners|tiro de esquina|tiros de esquina)\b/.test(text);
+  const marketTotal = isCornersMarket ? getCornerTotal(match) : totalGoals;
   const exactScore = prediction.match(/(?:^|\s)(\d+)\s*[-:]\s*(\d+)(?:\s|$)/);
   if (exactScore) return localGoals === Number(exactScore[1]) && visitorGoals === Number(exactScore[2]) ? 'acertado' : 'fallado';
 
   const over = text.match(/(?:mas|over)\s*(?:de|del)?\s*(\d+(?:\.\d+)?)/);
-  if (over) return totalGoals > Number(over[1]) ? 'acertado' : 'fallado';
+  if (over) return marketTotal === null ? '' : marketTotal > Number(over[1]) ? 'acertado' : 'fallado';
   const under = text.match(/(?:menos|under)\s*(?:de|del)?\s*(\d+(?:\.\d+)?)/);
-  if (under) return totalGoals < Number(under[1]) ? 'acertado' : 'fallado';
+  if (under) return marketTotal === null ? '' : marketTotal < Number(under[1]) ? 'acertado' : 'fallado';
 
   if (/(?:ambos.*(?:si|anotan|marcan)|btts.*(?:yes|si))/.test(text)) return localGoals > 0 && visitorGoals > 0 ? 'acertado' : 'fallado';
   if (/(?:ambos.*no|btts.*no)/.test(text)) return localGoals === 0 || visitorGoals === 0 ? 'acertado' : 'fallado';
@@ -364,10 +383,12 @@ function getPredictedOutcome(row, match) {
   const localDoesNotLose = mentionsLocalTeam && /\bno pierd\w*/.test(text);
   const visitorDoesNotWin = mentionsVisitorTeam && /\bno gan\w*/.test(text);
   const visitorDoesNotLose = mentionsVisitorTeam && /\bno pierd\w*/.test(text);
+  const drawWithLocal = /\bempate\b/.test(text) && mentionsLocalTeam && !mentionsVisitorTeam;
+  const drawWithVisitor = /\bempate\b/.test(text) && mentionsVisitorTeam && !mentionsLocalTeam;
   const drawAndVisitor = /(?:empate.*(?:derrota|visita|visitante)|(?:derrota|visita|visitante).*empate)/.test(text);
   const drawAndLocal = /(?:empate.*local|local.*empate)/.test(text);
-  if (localDoesNotWin || visitorDoesNotLose || drawAndVisitor) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
-  if (localDoesNotLose || visitorDoesNotWin || drawAndLocal) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
+  if (localDoesNotWin || visitorDoesNotLose || drawWithVisitor || drawAndVisitor) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
+  if (localDoesNotLose || visitorDoesNotWin || drawWithLocal || drawAndLocal) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b1x\b|local.*empate|empate.*local)/.test(text)) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\bx2\b|empate.*visitante|visitante.*empate)/.test(text)) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b12\b|local.*visitante|visitante.*local)/.test(text)) return ['1', '2'].includes(outcome) ? 'acertado' : 'fallado';
