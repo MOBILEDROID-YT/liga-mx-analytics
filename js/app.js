@@ -39,6 +39,7 @@ function getCategoryKey(value) {
 }
 
 const $ = (id) => document.getElementById(id);
+const guestFavoritesStorageKey = 'lma-favorite-teams';
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -275,6 +276,75 @@ function setLastUpdated() {
   if (element) element.textContent = `Última consulta: ${formatDate(appState.lastUpdatedAt)}`;
 }
 
+function readFavoritesFromStorage(storageKey) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    return Array.isArray(stored) ? stored.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getUserFavoritesStorageKey(userId = appState.user?.id) {
+  return userId ? `${guestFavoritesStorageKey}:${userId}` : guestFavoritesStorageKey;
+}
+
+function saveFavoritesToStorage(favorites, storageKey = getUserFavoritesStorageKey()) {
+  localStorage.setItem(storageKey, JSON.stringify(favorites));
+}
+
+async function loadUserFavorites() {
+  if (!appState.user) {
+    appState.favorites = readFavoritesFromStorage(guestFavoritesStorageKey);
+    return;
+  }
+
+  const userStorageKey = getUserFavoritesStorageKey();
+  const hasUserStorage = localStorage.getItem(userStorageKey) !== null;
+  const localFavorites = readFavoritesFromStorage(hasUserStorage ? userStorageKey : guestFavoritesStorageKey);
+  const { data, error } = await supabaseClient
+    .from('favoritos_usuario')
+    .select('equipo_abreviatura')
+    .eq('user_id', appState.user.id);
+  if (error) throw error;
+
+  const remoteFavorites = safeArray(data).map((row) => row.equipo_abreviatura).filter(Boolean);
+  const mergedFavorites = [...new Set([...remoteFavorites, ...localFavorites])];
+  const favoritesToInsert = localFavorites.filter((favorite) => !remoteFavorites.includes(favorite));
+  if (favoritesToInsert.length) {
+    const { error: insertError } = await supabaseClient
+      .from('favoritos_usuario')
+      .insert(favoritesToInsert.map((equipoAbreviatura) => ({
+        user_id: appState.user.id,
+        equipo_abreviatura: equipoAbreviatura
+      })));
+    if (insertError) throw insertError;
+  }
+
+  appState.favorites = mergedFavorites;
+  saveFavoritesToStorage(mergedFavorites, userStorageKey);
+  if (!hasUserStorage && localStorage.getItem(guestFavoritesStorageKey) !== null) {
+    localStorage.removeItem(guestFavoritesStorageKey);
+  }
+}
+
+async function syncFavoriteChange(abbreviation, isFavorite) {
+  if (!appState.user) return null;
+  if (isFavorite) {
+    const { error } = await supabaseClient
+      .from('favoritos_usuario')
+      .insert({ user_id: appState.user.id, equipo_abreviatura: abbreviation });
+    if (error && error.code !== '23505') return error;
+    return null;
+  }
+  const { error } = await supabaseClient
+    .from('favoritos_usuario')
+    .delete()
+    .eq('user_id', appState.user.id)
+    .eq('equipo_abreviatura', abbreviation);
+  return error || null;
+}
+
 async function initializeApp() {
   bindStaticEvents();
   setView(validViews.includes(appState.view) ? appState.view : 'inicio', false);
@@ -284,10 +354,30 @@ async function initializeApp() {
     const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError) throw sessionError;
     setAuthSession(sessionData.session);
+    try {
+      await loadUserFavorites();
+    } catch {
+      appState.favorites = readFavoritesFromStorage(getUserFavoritesStorageKey());
+    }
     supabaseClient.auth.onAuthStateChange((event, session) => {
       window.setTimeout(() => {
         setAuthSession(session);
         if (event === 'PASSWORD_RECOVERY') openAuthModal('new-password');
+        if (event === 'SIGNED_IN') {
+          loadUserFavorites()
+            .then(() => {
+              renderHome();
+              renderCalendar();
+              renderFavorites();
+            })
+            .catch(() => setConnectionStatus('error', 'La cuenta funciona, pero no se pudieron sincronizar tus favoritos.'));
+        }
+        if (event === 'SIGNED_OUT') {
+          appState.favorites = readFavoritesFromStorage(guestFavoritesStorageKey);
+          renderHome();
+          renderCalendar();
+          renderFavorites();
+        }
       }, 0);
     });
 
@@ -1123,17 +1213,28 @@ function renderStandings() {
   `;
 }
 
-function toggleFavorite(abbreviation) {
+async function toggleFavorite(abbreviation) {
   if (!abbreviation) return;
+  const previousFavorites = [...appState.favorites];
+  const isFavorite = !appState.favorites.includes(abbreviation);
   if (appState.favorites.includes(abbreviation)) {
     appState.favorites = appState.favorites.filter((item) => item !== abbreviation);
   } else {
     appState.favorites = [...appState.favorites, abbreviation];
   }
-  localStorage.setItem('lma-favorite-teams', JSON.stringify(appState.favorites));
+  saveFavoritesToStorage(appState.favorites);
   renderFavorites();
   renderHome();
   renderCalendar();
+  const error = await syncFavoriteChange(abbreviation, isFavorite);
+  if (error) {
+    appState.favorites = previousFavorites;
+    saveFavoritesToStorage(appState.favorites);
+    renderFavorites();
+    renderHome();
+    renderCalendar();
+    setConnectionStatus('error', 'No se pudo guardar ese favorito en tu cuenta.');
+  }
 }
 
 function renderFavoriteChips(containerId) {

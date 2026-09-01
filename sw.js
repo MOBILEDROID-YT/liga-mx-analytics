@@ -1,10 +1,10 @@
-const cacheName = 'liga-mx-analytics-shell-v9';
+const cacheName = 'liga-mx-analytics-shell-v10';
 const appShell = [
   './',
   './index.html',
   './css/style.css?v=9',
   './js/config.js',
-  './js/app.js?v=9',
+  './js/app.js?v=10',
   './manifest.webmanifest',
   './assets/icon.svg',
   './privacidad.html'
