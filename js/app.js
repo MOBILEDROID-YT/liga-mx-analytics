@@ -502,7 +502,6 @@ function bindStaticEvents() {
     renderQuiniela();
   });
 
-  $('quiniela-base-amount')?.addEventListener('input', renderQuiniela);
   $('quiniela-reset')?.addEventListener('click', () => {
     appState.quinielaPicks = {};
     renderQuiniela();
@@ -1047,12 +1046,10 @@ function renderQuiniela() {
   const doubles = matches.filter((match) => (appState.quinielaPicks[match.id] || ['1']).length === 2).length;
   const triples = matches.filter((match) => (appState.quinielaPicks[match.id] || ['1']).length === 3).length;
   const combinations = matches.reduce((total, match) => total * (appState.quinielaPicks[match.id] || ['1']).length, 1);
-  const baseAmount = numericValue($('quiniela-base-amount')?.value, 1);
-
   if ($('quiniela-doubles')) $('quiniela-doubles').textContent = doubles;
   if ($('quiniela-triples')) $('quiniela-triples').textContent = triples;
   if ($('quiniela-combinations')) $('quiniela-combinations').textContent = new Intl.NumberFormat('es-MX').format(combinations);
-  if ($('quiniela-total-cost')) $('quiniela-total-cost').textContent = `$${(combinations * baseAmount).toFixed(2)}`;
+  if ($('quiniela-total-cost')) $('quiniela-total-cost').textContent = 'Gratis';
 
   if (!matches.length) {
     container.innerHTML = '<div class="empty-state">No hay partidos próximos disponibles para armar una quiniela.</div>';
