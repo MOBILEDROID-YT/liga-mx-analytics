@@ -7,7 +7,7 @@
   <meta name="description" content="Liga MX Analytics: datos, tips y herramientas para analizar cada jornada.">
   <title>Liga MX Analytics</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
   <header class="app-header">
@@ -39,6 +39,11 @@
           <button id="search-team-btn" type="button" aria-label="Buscar equipo">⌕</button>
         </div>
         <button id="install-app-btn" class="install-btn hidden" type="button">Instalar app</button>
+        <button id="auth-open-btn" class="account-btn" type="button">Iniciar sesión</button>
+        <div id="auth-user-area" class="auth-user-area hidden" aria-live="polite">
+          <span id="auth-user-label" class="auth-user-label"></span>
+          <button id="auth-logout-btn" class="logout-btn" type="button">Salir</button>
+        </div>
       </div>
     </div>
   </header>
@@ -327,16 +332,52 @@
     </div>
   </div>
 
+  <div id="auth-modal" class="team-modal hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="team-modal-content auth-modal-content">
+      <button id="auth-close-btn" class="close-modal" type="button" aria-label="Cerrar">×</button>
+      <div class="auth-heading">
+        <span class="eyebrow">CUENTA LIGA MX ANALYTICS</span>
+        <h2 id="auth-title">Inicia sesión</h2>
+        <p id="auth-description">Guarda tu experiencia y prepárate para las funciones premium.</p>
+      </div>
+      <div class="auth-tabs" role="tablist" aria-label="Acceso a la cuenta">
+        <button class="auth-tab active" type="button" data-auth-mode="login" role="tab" aria-selected="true">Iniciar sesión</button>
+        <button class="auth-tab" type="button" data-auth-mode="register" role="tab" aria-selected="false">Crear cuenta</button>
+      </div>
+      <button id="auth-google-btn" class="google-auth-btn" type="button"><span aria-hidden="true">G</span>Continuar con Google</button>
+      <div class="auth-divider"><span>o con correo electrónico</span></div>
+      <form id="auth-form" class="auth-form" novalidate>
+        <div id="auth-name-field" class="auth-field hidden">
+          <label for="auth-name">Nombre visible</label>
+          <input id="auth-name" type="text" autocomplete="name" maxlength="60" placeholder="¿Cómo te mostramos?">
+        </div>
+        <div class="auth-field">
+          <label for="auth-email">Correo electrónico</label>
+          <input id="auth-email" type="email" autocomplete="email" required placeholder="tu-correo@ejemplo.com">
+        </div>
+        <div class="auth-field">
+          <label for="auth-password">Contraseña</label>
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required placeholder="Mínimo 6 caracteres">
+          <small id="auth-password-note">Usa al menos 6 caracteres.</small>
+        </div>
+        <button id="auth-submit-btn" class="auth-submit-btn" type="submit">Iniciar sesión</button>
+      </form>
+      <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+      <p class="auth-legal">Al crear una cuenta aceptas nuestra <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</p>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <div class="page-container footer-inner">
       <span>LIGA MX ANALYTICS</span>
       <span>Datos para leer mejor el partido.</span>
       <a href="#tips" data-view-link="tips">Revisar transparencia</a>
+      <a href="privacidad.html">Privacidad</a>
     </div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

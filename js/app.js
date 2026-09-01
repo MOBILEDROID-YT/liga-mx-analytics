@@ -16,7 +16,10 @@ const appState = {
   quinielaPicks: {},
   simulatorPicks: {},
   deferredInstallPrompt: null,
-  lastUpdatedAt: null
+  lastUpdatedAt: null,
+  session: null,
+  user: null,
+  authMode: 'login'
 };
 
 const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas'];
@@ -57,6 +60,16 @@ function normalizeText(value) {
     .toLowerCase()
     .replace(/\([^)]*\)/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function normalizePredictionText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9()]+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -136,6 +149,16 @@ function sameTeamName(firstName, secondName) {
   const first = canonicalTeamName(firstName);
   const second = canonicalTeamName(secondName);
   return Boolean(first && second && (first === second || first.includes(second) || second.includes(first)));
+}
+
+function mentionsTeamName(text, teamName) {
+  const normalizedText = normalizeText(text);
+  const normalizedTeam = normalizeText(teamName);
+  if (!normalizedText || !normalizedTeam) return false;
+  if (normalizedText.includes(normalizedTeam) || normalizedTeam.includes(normalizedText)) return true;
+  const genericWords = ['club', 'futbol', 'football', 'deportivo', 'atletico'];
+  const teamTokens = normalizedTeam.split(' ').filter((token) => token.length >= 4 && !genericWords.includes(token));
+  return teamTokens.some((token) => new RegExp(`\\b${token}\\b`).test(normalizedText));
 }
 
 function matchContainsTeam(match, abbreviation) {
@@ -258,8 +281,12 @@ async function initializeApp() {
   setConnectionStatus('loading', 'Verificando conexión con Supabase...');
 
   try {
-    const { error: sessionError } = await supabaseClient.auth.getSession();
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError) throw sessionError;
+    setAuthSession(sessionData.session);
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => setAuthSession(session), 0);
+    });
 
     const results = await Promise.allSettled([
       loadTeams(),
@@ -350,7 +377,7 @@ function findHistoryMatch(row) {
 }
 
 function getPredictedOutcome(row, match) {
-  const prediction = normalizeText(row.prediccion);
+  const prediction = normalizePredictionText(row.prediccion);
   const betType = normalizeText(row.tipo_apuesta);
   const combinedPredictions = prediction.split(/\s+(?:y|e)\s+/).filter(Boolean);
   if (combinedPredictions.length > 1) {
@@ -377,8 +404,8 @@ function getPredictedOutcome(row, match) {
   if (/(?:ambos.*(?:si|anotan|marcan)|btts.*(?:yes|si))/.test(text)) return localGoals > 0 && visitorGoals > 0 ? 'acertado' : 'fallado';
   if (/(?:ambos.*no|btts.*no)/.test(text)) return localGoals === 0 || visitorGoals === 0 ? 'acertado' : 'fallado';
 
-  const mentionsLocalTeam = sameTeamName(prediction, match.local) || /\blocal\b/.test(text);
-  const mentionsVisitorTeam = sameTeamName(prediction, match.visitante) || /\b(?:visitante|visita)\b/.test(text);
+  const mentionsLocalTeam = mentionsTeamName(prediction, match.local) || /\blocal\b/.test(text);
+  const mentionsVisitorTeam = mentionsTeamName(prediction, match.visitante) || /\b(?:visitante|visita)\b/.test(text);
   const localDoesNotWin = mentionsLocalTeam && /\bno gan\w*/.test(text);
   const localDoesNotLose = mentionsLocalTeam && /\bno pierd\w*/.test(text);
   const visitorDoesNotWin = mentionsVisitorTeam && /\bno gan\w*/.test(text);
@@ -516,11 +543,25 @@ function bindStaticEvents() {
   $('team-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'team-modal') closeTeamModal();
   });
+  $('auth-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'auth-modal') closeAuthModal();
+  });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeTeamModal();
+    if (event.key === 'Escape') {
+      closeTeamModal();
+      closeAuthModal();
+    }
   });
 
   $('install-app-btn')?.addEventListener('click', installPwa);
+  $('auth-open-btn')?.addEventListener('click', () => openAuthModal('login'));
+  $('auth-close-btn')?.addEventListener('click', closeAuthModal);
+  $('auth-google-btn')?.addEventListener('click', signInWithGoogle);
+  $('auth-form')?.addEventListener('submit', handleAuthSubmit);
+  $('auth-logout-btn')?.addEventListener('click', signOutUser);
+  document.querySelectorAll('[data-auth-mode]').forEach((button) => {
+    button.addEventListener('click', () => setAuthMode(button.dataset.authMode));
+  });
   window.addEventListener('hashchange', () => {
     const view = window.location.hash.replace('#', '');
     setView(validViews.includes(view) ? view : 'inicio', false);
@@ -549,6 +590,128 @@ function handleDocumentClick(event) {
   if (action.dataset.action === 'quiniela-pick') {
     updateQuinielaPick(action.dataset.match, action.dataset.pick);
   }
+}
+
+function getAuthDisplayName(user) {
+  return user?.user_metadata?.display_name
+    || user?.user_metadata?.full_name
+    || user?.email?.split('@')[0]
+    || 'Usuario';
+}
+
+function setAuthSession(session) {
+  appState.session = session || null;
+  appState.user = session?.user || null;
+  const openButton = $('auth-open-btn');
+  const userArea = $('auth-user-area');
+  const userLabel = $('auth-user-label');
+  if (!openButton || !userArea || !userLabel) return;
+  if (appState.user) {
+    openButton.classList.add('hidden');
+    userArea.classList.remove('hidden');
+    userLabel.textContent = getAuthDisplayName(appState.user);
+    closeAuthModal();
+  } else {
+    openButton.classList.remove('hidden');
+    userArea.classList.add('hidden');
+    userLabel.textContent = '';
+  }
+}
+
+function setAuthMessage(message, type = '') {
+  const element = $('auth-message');
+  if (!element) return;
+  element.className = `auth-message ${type}`.trim();
+  element.textContent = message;
+}
+
+function setAuthMode(mode = 'login') {
+  appState.authMode = mode === 'register' ? 'register' : 'login';
+  const isRegister = appState.authMode === 'register';
+  document.querySelectorAll('[data-auth-mode]').forEach((button) => {
+    const active = button.dataset.authMode === appState.authMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+  $('auth-name-field')?.classList.toggle('hidden', !isRegister);
+  if ($('auth-title')) $('auth-title').textContent = isRegister ? 'Crea tu cuenta' : 'Inicia sesión';
+  if ($('auth-description')) $('auth-description').textContent = isRegister ? 'Regístrate para guardar tu experiencia y futuras funciones premium.' : 'Accede para guardar tu experiencia y prepararte para futuras funciones premium.';
+  if ($('auth-submit-btn')) $('auth-submit-btn').textContent = isRegister ? 'Crear cuenta' : 'Iniciar sesión';
+  if ($('auth-password')) $('auth-password').setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+  setAuthMessage('');
+}
+
+function openAuthModal(mode = 'login') {
+  setAuthMode(mode);
+  $('auth-modal')?.classList.remove('hidden');
+  window.setTimeout(() => $('auth-email')?.focus(), 0);
+}
+
+function closeAuthModal() {
+  $('auth-modal')?.classList.add('hidden');
+  setAuthMessage('');
+}
+
+async function signInWithGoogle() {
+  setAuthMessage('Abriendo Google...', 'loading');
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if (error) setAuthMessage(error.message, 'error');
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+  const email = $('auth-email')?.value.trim();
+  const password = $('auth-password')?.value || '';
+  const displayName = $('auth-name')?.value.trim() || '';
+  if (!email || !password) {
+    setAuthMessage('Escribe tu correo y contraseña.', 'error');
+    return;
+  }
+  if (password.length < 6) {
+    setAuthMessage('La contraseña debe tener al menos 6 caracteres.', 'error');
+    return;
+  }
+  const submitButton = $('auth-submit-btn');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = appState.authMode === 'register' ? 'Creando cuenta...' : 'Entrando...';
+  }
+  setAuthMessage('Procesando...', 'loading');
+  try {
+    const response = appState.authMode === 'register'
+      ? await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: displayName || email.split('@')[0] },
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+      })
+      : await supabaseClient.auth.signInWithPassword({ email, password });
+    if (response.error) throw response.error;
+    if (appState.authMode === 'register' && !response.data.session) {
+      setAuthMessage('Cuenta creada. Revisa tu correo para confirmarla.', 'success');
+    } else {
+      setAuthMessage('Acceso correcto.', 'success');
+      setAuthSession(response.data.session);
+    }
+  } catch (error) {
+    setAuthMessage(error.message || 'No se pudo completar el acceso.', 'error');
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = appState.authMode === 'register' ? 'Crear cuenta' : 'Iniciar sesión';
+    }
+  }
+}
+
+async function signOutUser() {
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) setConnectionStatus('error', `No se pudo cerrar sesión: ${error.message}`);
 }
 
 function setView(view, updateHash = true) {
