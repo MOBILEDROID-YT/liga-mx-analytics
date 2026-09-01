@@ -623,7 +623,7 @@ function setAuthSession(session) {
   appState.user = session?.user || null;
   const openButton = $('auth-open-btn');
   const userArea = $('auth-user-area');
-  const userLabel = $('auth-user-label');
+  const userLabel = $('auth-account-btn');
   if (!openButton || !userArea || !userLabel) return;
   if (appState.user) {
     openButton.classList.add('hidden');
