@@ -549,16 +549,23 @@ function bindStaticEvents() {
   $('auth-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'auth-modal') closeAuthModal();
   });
+  $('account-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'account-modal') closeAccountModal();
+  });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeTeamModal();
       closeAuthModal();
+      closeAccountModal();
     }
   });
 
   $('install-app-btn')?.addEventListener('click', installPwa);
   $('auth-open-btn')?.addEventListener('click', () => openAuthModal('login'));
   $('auth-close-btn')?.addEventListener('click', closeAuthModal);
+  $('auth-account-btn')?.addEventListener('click', openAccountModal);
+  $('account-close-btn')?.addEventListener('click', closeAccountModal);
+  $('account-logout-btn')?.addEventListener('click', signOutUser);
   $('auth-google-btn')?.addEventListener('click', signInWithGoogle);
   $('auth-form')?.addEventListener('submit', handleAuthSubmit);
   $('auth-logout-btn')?.addEventListener('click', signOutUser);
@@ -604,6 +611,13 @@ function getAuthDisplayName(user) {
     || 'Usuario';
 }
 
+function getAuthProviderLabel(user) {
+  const provider = user?.app_metadata?.provider || user?.identities?.[0]?.provider || '';
+  if (provider === 'google') return 'Google';
+  if (provider === 'email') return 'Correo electronico';
+  return provider || 'Cuenta';
+}
+
 function setAuthSession(session) {
   appState.session = session || null;
   appState.user = session?.user || null;
@@ -615,11 +629,15 @@ function setAuthSession(session) {
     openButton.classList.add('hidden');
     userArea.classList.remove('hidden');
     userLabel.textContent = getAuthDisplayName(appState.user);
+    if ($('account-name')) $('account-name').textContent = getAuthDisplayName(appState.user);
+    if ($('account-email')) $('account-email').textContent = appState.user.email || '\u2014';
+    if ($('account-provider')) $('account-provider').textContent = getAuthProviderLabel(appState.user);
     closeAuthModal();
   } else {
     openButton.classList.remove('hidden');
     userArea.classList.add('hidden');
     userLabel.textContent = '';
+    closeAccountModal();
   }
 }
 
@@ -679,6 +697,18 @@ function openAuthModal(mode = 'login') {
 function closeAuthModal() {
   $('auth-modal')?.classList.add('hidden');
   setAuthMessage('');
+}
+
+function openAccountModal() {
+  if (!appState.user) {
+    openAuthModal('login');
+    return;
+  }
+  $('account-modal')?.classList.remove('hidden');
+}
+
+function closeAccountModal() {
+  $('account-modal')?.classList.add('hidden');
 }
 
 async function signInWithGoogle() {
