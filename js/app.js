@@ -284,8 +284,11 @@ async function initializeApp() {
     const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError) throw sessionError;
     setAuthSession(sessionData.session);
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-      window.setTimeout(() => setAuthSession(session), 0);
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      window.setTimeout(() => {
+        setAuthSession(session);
+        if (event === 'PASSWORD_RECOVERY') openAuthModal('new-password');
+      }, 0);
     });
 
     const results = await Promise.allSettled([
@@ -559,6 +562,8 @@ function bindStaticEvents() {
   $('auth-google-btn')?.addEventListener('click', signInWithGoogle);
   $('auth-form')?.addEventListener('submit', handleAuthSubmit);
   $('auth-logout-btn')?.addEventListener('click', signOutUser);
+  $('auth-recover-btn')?.addEventListener('click', () => setAuthMode('recovery'));
+  $('auth-back-login-btn')?.addEventListener('click', () => setAuthMode('login'));
   document.querySelectorAll('[data-auth-mode]').forEach((button) => {
     button.addEventListener('click', () => setAuthMode(button.dataset.authMode));
   });
@@ -626,25 +631,49 @@ function setAuthMessage(message, type = '') {
 }
 
 function setAuthMode(mode = 'login') {
-  appState.authMode = mode === 'register' ? 'register' : 'login';
+  appState.authMode = ['register', 'recovery', 'new-password'].includes(mode) ? mode : 'login';
   const isRegister = appState.authMode === 'register';
+  const isRecovery = appState.authMode === 'recovery';
+  const isNewPassword = appState.authMode === 'new-password';
   document.querySelectorAll('[data-auth-mode]').forEach((button) => {
     const active = button.dataset.authMode === appState.authMode;
     button.classList.toggle('active', active);
     button.setAttribute('aria-selected', String(active));
   });
   $('auth-name-field')?.classList.toggle('hidden', !isRegister);
+  $('auth-tabs')?.classList.toggle('hidden', isRecovery || isNewPassword);
+  $('auth-google-btn')?.classList.toggle('hidden', isRecovery || isNewPassword);
+  document.querySelector('.auth-divider')?.classList.toggle('hidden', isRecovery || isNewPassword);
+  $('auth-email-field')?.classList.toggle('hidden', isNewPassword);
+  $('auth-password')?.closest('.auth-field')?.classList.toggle('hidden', isRecovery);
+  $('auth-password-confirm-field')?.classList.toggle('hidden', !isNewPassword);
+  $('auth-recover-btn')?.classList.toggle('hidden', isRegister || isRecovery || isNewPassword);
+  $('auth-back-login-btn')?.classList.toggle('hidden', !isRecovery && !isNewPassword);
+  if ($('auth-email')) $('auth-email').required = !isNewPassword;
+  if ($('auth-password')) $('auth-password').required = !isRecovery;
+  if ($('auth-password-confirm')) $('auth-password-confirm').required = isNewPassword;
   if ($('auth-title')) $('auth-title').textContent = isRegister ? 'Crea tu cuenta' : 'Inicia sesión';
   if ($('auth-description')) $('auth-description').textContent = isRegister ? 'Regístrate para guardar tu experiencia y futuras funciones premium.' : 'Accede para guardar tu experiencia y prepararte para futuras funciones premium.';
   if ($('auth-submit-btn')) $('auth-submit-btn').textContent = isRegister ? 'Crear cuenta' : 'Iniciar sesión';
-  if ($('auth-password')) $('auth-password').setAttribute('autocomplete', isRegister ? 'new-password' : 'current-password');
+  if ($('auth-password')) $('auth-password').setAttribute('autocomplete', isRegister || isNewPassword ? 'new-password' : 'current-password');
+  if ($('auth-recover-btn')) $('auth-recover-btn').textContent = '\u00bfOlvidaste tu contrase\u00f1a?';
+  if (isRecovery) {
+    if ($('auth-title')) $('auth-title').textContent = 'Recuperar contrasena';
+    if ($('auth-description')) $('auth-description').textContent = 'Te enviaremos un enlace para recuperar tu acceso.';
+    if ($('auth-submit-btn')) $('auth-submit-btn').textContent = 'Enviar enlace';
+  }
+  if (isNewPassword) {
+    if ($('auth-title')) $('auth-title').textContent = 'Cambia tu contrasena';
+    if ($('auth-description')) $('auth-description').textContent = 'Escribe una nueva contrasena para recuperar tu acceso.';
+    if ($('auth-submit-btn')) $('auth-submit-btn').textContent = 'Guardar nueva contrasena';
+  }
   setAuthMessage('');
 }
 
 function openAuthModal(mode = 'login') {
   setAuthMode(mode);
   $('auth-modal')?.classList.remove('hidden');
-  window.setTimeout(() => $('auth-email')?.focus(), 0);
+  window.setTimeout(() => (appState.authMode === 'new-password' ? $('auth-password') : $('auth-email'))?.focus(), 0);
 }
 
 function closeAuthModal() {
@@ -662,11 +691,67 @@ async function signInWithGoogle() {
   if (error) setAuthMessage(error.message, 'error');
 }
 
+async function requestPasswordReset() {
+  const email = $('auth-email')?.value.trim();
+  if (!email) {
+    setAuthMessage('Escribe tu correo para enviarte el enlace.', 'error');
+    $('auth-email')?.focus();
+    return;
+  }
+  setAuthMessage('Enviando enlace de recuperacion...', 'loading');
+  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) {
+    setAuthMessage(error.message || 'No se pudo enviar el enlace.', 'error');
+    return;
+  }
+  setAuthMessage('Revisa tu correo. El enlace te permitira crear una nueva contrasena.', 'success');
+}
+
 async function handleAuthSubmit(event) {
   event.preventDefault();
   const email = $('auth-email')?.value.trim();
   const password = $('auth-password')?.value || '';
+  const passwordConfirm = $('auth-password-confirm')?.value || '';
   const displayName = $('auth-name')?.value.trim() || '';
+  if (appState.authMode === 'recovery') {
+    await requestPasswordReset();
+    return;
+  }
+  if (appState.authMode === 'new-password') {
+    if (!password || !passwordConfirm) {
+      setAuthMessage('Escribe y repite tu nueva contrasena.', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthMessage('La contrasena debe tener al menos 6 caracteres.', 'error');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setAuthMessage('Las contrasenas no coinciden.', 'error');
+      return;
+    }
+    const submitButton = $('auth-submit-btn');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Guardando...';
+    }
+    setAuthMessage('Actualizando contrasena...', 'loading');
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+      setAuthMessage('Contrasena actualizada. Ya puedes entrar normalmente.', 'success');
+      window.setTimeout(() => setAuthMode('login'), 1200);
+    } catch (error) {
+      setAuthMessage(error.message || 'No se pudo actualizar la contrasena.', 'error');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Guardar nueva contrasena';
+      }
+    }
+    return;
+  }
   if (!email || !password) {
     setAuthMessage('Escribe tu correo y contraseña.', 'error');
     return;

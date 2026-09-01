@@ -2191,6 +2191,8 @@ select:focus-visible {
 .auth-submit-btn { padding: 11px; color: var(--white); background: var(--green-dark); border: 1px solid var(--green-dark); border-radius: 8px; font-size: 0.76rem; font-weight: 800; }
 .auth-submit-btn:hover { background: var(--green); border-color: var(--green); }
 .auth-submit-btn:disabled { cursor: wait; opacity: 0.65; }
+.auth-link-btn { display: block; margin: 12px auto 0; padding: 3px 6px; color: var(--green-dark); background: transparent; border: 0; font-size: 0.7rem; font-weight: 800; text-decoration: underline; }
+.auth-link-btn:hover { color: var(--navy); }
 .auth-message { min-height: 18px; margin: 12px 0 0; color: var(--muted); font-size: 0.7rem; text-align: center; }
 .auth-message.error { color: var(--red-dark); }
 .auth-message.success { color: var(--green-dark); }
