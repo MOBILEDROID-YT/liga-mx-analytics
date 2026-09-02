@@ -111,28 +111,23 @@ async function loadAdminData() {
 
   const tipsResponse = await adminRequest(
     supabaseClient
-      .from('tips_completos')
-      .select('id,jornada,local,visitante,categoria,tipo_apuesta,prediccion,confianza,razonamiento')
-      .order('jornada', { ascending: false }),
+      .from('tips')
+      .select('id,partido_id,categoria,tipo_apuesta,prediccion,confianza,razonamiento,resultado,created_at')
+      .order('created_at', { ascending: false }),
     'los tips'
   );
   if (tipsResponse.error) throw tipsResponse.error;
+  const matchesById = new Map(adminState.matches.map((match) => [String(match.id), match]));
   const tips = Array.isArray(tipsResponse.data) ? tipsResponse.data : [];
-  const tipIds = tips.map((tip) => tip.id).filter(Boolean);
-  let tipResults = [];
-  if (tipIds.length) {
-    const resultsResponse = await adminRequest(
-      supabaseClient
-        .from('tips')
-        .select('id,resultado')
-        .in('id', tipIds),
-      'los resultados de tips'
-    );
-    if (resultsResponse.error) throw resultsResponse.error;
-    tipResults = Array.isArray(resultsResponse.data) ? resultsResponse.data : [];
-  }
-  const resultsById = new Map(tipResults.map((tip) => [String(tip.id), tip.resultado || '']));
-  adminState.tips = tips.map((tip) => ({ ...tip, resultado: resultsById.get(String(tip.id)) || '' }));
+  adminState.tips = tips.map((tip) => {
+    const match = matchesById.get(String(tip.partido_id));
+    return {
+      ...tip,
+      jornada: match?.jornada || '—',
+      local: match?.local || 'Partido no encontrado',
+      visitante: match?.visitante || `ID ${tip.partido_id || 'sin partido'}`
+    };
+  });
   renderTipOptions();
 }
 
