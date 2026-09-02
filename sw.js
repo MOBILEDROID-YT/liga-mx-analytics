@@ -1,4 +1,4 @@
-const cacheName = 'futbol-mx-analisis-pro-shell-v13';
+const cacheName = 'futbol-mx-analisis-pro-shell-v14';
 const appShell = [
   './',
   './index.html',
@@ -11,7 +11,7 @@ const appShell = [
   './terminos.html',
   './contacto.html',
   './admin.html',
-  './js/admin.js?v=2'
+  './js/admin.js?v=3'
 ];
 
 self.addEventListener('install', (event) => {

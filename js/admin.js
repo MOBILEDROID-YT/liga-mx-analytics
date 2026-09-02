@@ -53,6 +53,13 @@ function setDynamicOption(select, value) {
   select.value = value;
 }
 
+function adminRequest(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => window.setTimeout(() => reject(new Error(`Tiempo de espera agotado al cargar ${label}.`)), 10000))
+  ]);
+}
+
 function renderMatchOptions() {
   const select = admin$('match-select');
   if (!select) return;
@@ -91,33 +98,41 @@ function fillTipForm() {
 }
 
 async function loadAdminData() {
-  const [matchesResponse, tipsResponse] = await Promise.all([
+  const matchesResponse = await adminRequest(
     supabaseClient
       .from('calendario_completo')
       .select('id,jornada,local,visitante,fecha_hora_mx,goles_local,goles_visitante,estado')
       .order('fecha_hora_mx', { ascending: true }),
+    'los partidos'
+  );
+  if (matchesResponse.error) throw matchesResponse.error;
+  adminState.matches = Array.isArray(matchesResponse.data) ? matchesResponse.data : [];
+  renderMatchOptions();
+
+  const tipsResponse = await adminRequest(
     supabaseClient
       .from('tips_completos')
       .select('id,jornada,local,visitante,categoria,tipo_apuesta,prediccion,confianza,razonamiento')
-      .order('jornada', { ascending: false })
-  ]);
-  if (matchesResponse.error) throw matchesResponse.error;
+      .order('jornada', { ascending: false }),
+    'los tips'
+  );
   if (tipsResponse.error) throw tipsResponse.error;
-  adminState.matches = Array.isArray(matchesResponse.data) ? matchesResponse.data : [];
   const tips = Array.isArray(tipsResponse.data) ? tipsResponse.data : [];
   const tipIds = tips.map((tip) => tip.id).filter(Boolean);
   let tipResults = [];
   if (tipIds.length) {
-    const resultsResponse = await supabaseClient
-      .from('tips')
-      .select('id,resultado')
-      .in('id', tipIds);
+    const resultsResponse = await adminRequest(
+      supabaseClient
+        .from('tips')
+        .select('id,resultado')
+        .in('id', tipIds),
+      'los resultados de tips'
+    );
     if (resultsResponse.error) throw resultsResponse.error;
     tipResults = Array.isArray(resultsResponse.data) ? resultsResponse.data : [];
   }
   const resultsById = new Map(tipResults.map((tip) => [String(tip.id), tip.resultado || '']));
   adminState.tips = tips.map((tip) => ({ ...tip, resultado: resultsById.get(String(tip.id)) || '' }));
-  renderMatchOptions();
   renderTipOptions();
 }
 
