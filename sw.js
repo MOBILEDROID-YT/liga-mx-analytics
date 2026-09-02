@@ -1,13 +1,15 @@
-const cacheName = 'liga-mx-analytics-shell-v10';
+const cacheName = 'liga-mx-analytics-shell-v11';
 const appShell = [
   './',
   './index.html',
-  './css/style.css?v=9',
+  './css/style.css?v=11',
   './js/config.js',
   './js/app.js?v=10',
   './manifest.webmanifest',
   './assets/icon.svg',
-  './privacidad.html'
+  './privacidad.html',
+  './terminos.html',
+  './contacto.html'
 ];
 
 self.addEventListener('install', (event) => {
