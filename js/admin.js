@@ -97,14 +97,26 @@ async function loadAdminData() {
       .select('id,jornada,local,visitante,fecha_hora_mx,goles_local,goles_visitante,estado')
       .order('fecha_hora_mx', { ascending: true }),
     supabaseClient
-      .from('tips_historial')
-      .select('id,partido_id,jornada,local,visitante,categoria,tipo_apuesta,prediccion,confianza,razonamiento,resultado')
+      .from('tips_completos')
+      .select('id,jornada,local,visitante,categoria,tipo_apuesta,prediccion,confianza,razonamiento')
       .order('jornada', { ascending: false })
   ]);
   if (matchesResponse.error) throw matchesResponse.error;
   if (tipsResponse.error) throw tipsResponse.error;
   adminState.matches = Array.isArray(matchesResponse.data) ? matchesResponse.data : [];
-  adminState.tips = Array.isArray(tipsResponse.data) ? tipsResponse.data : [];
+  const tips = Array.isArray(tipsResponse.data) ? tipsResponse.data : [];
+  const tipIds = tips.map((tip) => tip.id).filter(Boolean);
+  let tipResults = [];
+  if (tipIds.length) {
+    const resultsResponse = await supabaseClient
+      .from('tips')
+      .select('id,resultado')
+      .in('id', tipIds);
+    if (resultsResponse.error) throw resultsResponse.error;
+    tipResults = Array.isArray(resultsResponse.data) ? resultsResponse.data : [];
+  }
+  const resultsById = new Map(tipResults.map((tip) => [String(tip.id), tip.resultado || '']));
+  adminState.tips = tips.map((tip) => ({ ...tip, resultado: resultsById.get(String(tip.id)) || '' }));
   renderMatchOptions();
   renderTipOptions();
 }
@@ -130,8 +142,13 @@ async function checkAdmin(user) {
   admin$('admin-current-email').textContent = `${adminUserName(user)} · ${user.email || ''}`;
   if (adminState.isAdmin) {
     adminFeedback('Cargando datos administrativos...', 'loading');
-    await loadAdminData();
-    adminFeedback('Listo. Los cambios se aplican directamente a Supabase.', 'success');
+    try {
+      await loadAdminData();
+      adminFeedback('Listo. Los cambios se aplican directamente a Supabase.', 'success');
+    } catch (error) {
+      adminFeedback(`No se pudieron cargar los datos: ${error.message || 'revisa las vistas y permisos de Supabase.'}`, 'error');
+      throw error;
+    }
   }
 }
 
