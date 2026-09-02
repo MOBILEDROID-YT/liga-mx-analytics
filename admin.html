@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071d3d">
+  <meta name="description" content="Panel administrativo de F&uacute;tbol MX An&aacute;lisis PRO.">
+  <title>Administraci&oacute;n | F&uacute;tbol MX An&aacute;lisis PRO</title>
+  <link rel="stylesheet" href="css/style.css?v=12">
+</head>
+<body>
+  <header class="app-header">
+    <div class="topbar page-container">
+      <a class="brand" href="index.html#inicio" aria-label="Volver al inicio">
+        <span class="brand-ball" aria-hidden="true"></span>
+        <span class="brand-copy">
+          <strong>F&Uacute;TBOL MX</strong>
+          <strong>AN&Aacute;LISIS PRO</strong>
+          <small>ADMINISTRACI&Oacute;N SEGURA</small>
+        </span>
+      </a>
+      <div class="header-actions admin-header-actions">
+        <a class="back-link" href="index.html#inicio">Volver al sitio</a>
+        <button id="admin-logout-btn" class="logout-btn hidden" type="button">Cerrar sesi&oacute;n</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-container">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow">CONTROL INTERNO</span>
+          <h1>Panel administrativo</h1>
+          <p>Actualiza resultados y tips sin exponer claves privadas en el navegador.</p>
+        </div>
+        <div class="admin-shield" aria-hidden="true">&#128274;</div>
+      </div>
+
+      <section id="admin-access" class="surface-card admin-access-card">
+        <span class="eyebrow">ACCESO RESTRINGIDO</span>
+        <h2>Inicia sesi&oacute;n para continuar</h2>
+        <p class="helper-text">Solo las cuentas registradas en <code>admin_users</code> pueden editar datos.</p>
+        <button id="admin-google-btn" class="google-auth-btn" type="button"><span aria-hidden="true">G</span>Continuar con Google</button>
+        <div class="auth-divider"><span>o con correo electr&oacute;nico</span></div>
+        <form id="admin-login-form" class="auth-form" novalidate>
+          <div class="auth-field">
+            <label for="admin-email">Correo electr&oacute;nico</label>
+            <input id="admin-email" type="email" autocomplete="email" required placeholder="tu-correo@ejemplo.com">
+          </div>
+          <div class="auth-field">
+            <label for="admin-password">Contrase&ntilde;a</label>
+            <input id="admin-password" type="password" autocomplete="current-password" required placeholder="Tu contrase&ntilde;a">
+          </div>
+          <button id="admin-login-btn" class="auth-submit-btn" type="submit">Iniciar sesi&oacute;n</button>
+        </form>
+        <p id="admin-message" class="auth-message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="admin-denied" class="surface-card admin-denied hidden">
+        <span class="eyebrow">SIN PERMISOS</span>
+        <h2>Esta cuenta no es administradora</h2>
+        <p>Inicia sesi&oacute;n con la cuenta autorizada o agrega su UUID a <code>public.admin_users</code> desde el SQL Editor.</p>
+      </section>
+
+      <section id="admin-dashboard" class="admin-dashboard hidden">
+        <div class="admin-status-bar">
+          <span><i class="status-dot"></i> Acceso administrativo activo</span>
+          <span id="admin-current-email"></span>
+        </div>
+        <div class="admin-grid">
+          <article class="surface-card admin-panel">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">RESULTADOS</span>
+                <h2>Actualizar partido</h2>
+              </div>
+            </div>
+            <form id="match-form" class="admin-form">
+              <label class="field-label" for="match-select">Partido</label>
+              <select id="match-select" class="select-control" required></select>
+              <div class="admin-score-grid">
+                <div class="auth-field">
+                  <label for="match-home-score">Goles local</label>
+                  <input id="match-home-score" type="number" min="0" max="99" step="1">
+                </div>
+                <div class="auth-field">
+                  <label for="match-away-score">Goles visitante</label>
+                  <input id="match-away-score" type="number" min="0" max="99" step="1">
+                </div>
+              </div>
+              <label class="field-label" for="match-status">Estado</label>
+              <select id="match-status" class="select-control">
+                <option value="programado">Programado</option>
+                <option value="en_vivo">En vivo</option>
+                <option value="finalizado">Finalizado</option>
+              </select>
+              <button class="auth-submit-btn" type="submit">Guardar resultado</button>
+            </form>
+          </article>
+
+          <article class="surface-card admin-panel">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">PUBLICACIONES</span>
+                <h2>Editar tip</h2>
+              </div>
+            </div>
+            <form id="tip-form" class="admin-form">
+              <label class="field-label" for="tip-select">Tip</label>
+              <select id="tip-select" class="select-control" required></select>
+              <label class="field-label" for="tip-category">Categor&iacute;a</label>
+              <select id="tip-category" class="select-control">
+                <option value="base">Base</option>
+                <option value="zona_gris">Zona gris</option>
+                <option value="sorpresa">Sorpresa</option>
+              </select>
+              <label class="field-label" for="tip-market">Tipo de apuesta</label>
+              <input id="tip-market" class="text-control" type="text" maxlength="100">
+              <label class="field-label" for="tip-prediction">Predicci&oacute;n</label>
+              <input id="tip-prediction" class="text-control" type="text" maxlength="160">
+              <div class="admin-score-grid">
+                <div class="auth-field">
+                  <label for="tip-confidence">Confianza</label>
+                  <input id="tip-confidence" type="number" min="0" max="100" step="1">
+                </div>
+                <div class="auth-field">
+                  <label for="tip-result">Resultado</label>
+                  <select id="tip-result" class="select-control">
+                    <option value="">Autom&aacute;tico</option>
+                    <option value="acertado">Acertado</option>
+                    <option value="fallado">Fallado</option>
+                  </select>
+                </div>
+              </div>
+              <label class="field-label" for="tip-reason">Razonamiento</label>
+              <textarea id="tip-reason" class="text-control admin-textarea" rows="4" maxlength="500"></textarea>
+              <p class="admin-note">Usa “Autom&aacute;tico” para que el historial se calcule con el marcador.</p>
+              <button class="auth-submit-btn" type="submit">Guardar tip</button>
+            </form>
+          </article>
+        </div>
+        <p id="admin-feedback" class="admin-feedback" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div class="page-container footer-inner">
+      <span>F&Uacute;TBOL MX AN&Aacute;LISIS PRO</span>
+      <a href="index.html#inicio">Volver al sitio</a>
+      <a href="privacidad.html">Privacidad</a>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/admin.js?v=1"></script>
+</body>
+</html>

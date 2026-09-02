@@ -1,7 +1,7 @@
 {
-  "name": "Liga MX Analytics",
-  "short_name": "Liga MX Analytics",
-  "description": "Datos, tips y herramientas para entender cada jornada de la Liga MX.",
+  "name": "Fútbol MX Análisis PRO",
+  "short_name": "Fútbol MX PRO",
+  "description": "Datos, tips y herramientas para entender cada jornada del fútbol mexicano.",
   "start_url": "./index.html#inicio",
   "scope": "./",
   "display": "standalone",
@@ -17,4 +17,3 @@
     }
   ]
 }
-
