@@ -110,15 +110,14 @@ async function loadAdminData() {
   renderMatchOptions();
 
   const tipsResponse = await adminRequest(
-    supabaseClient
-      .from('tips')
-      .select('id,partido_id,categoria,tipo_apuesta,prediccion,confianza,razonamiento,resultado,created_at')
-      .order('created_at', { ascending: false }),
+    supabaseClient.rpc('admin_list_tips'),
     'los tips'
   );
   if (tipsResponse.error) throw tipsResponse.error;
   const matchesById = new Map(adminState.matches.map((match) => [String(match.id), match]));
-  const tips = Array.isArray(tipsResponse.data) ? tipsResponse.data : [];
+  const tips = Array.isArray(tipsResponse.data)
+    ? [...tipsResponse.data].sort((first, second) => new Date(second.created_at || 0) - new Date(first.created_at || 0))
+    : [];
   adminState.tips = tips.map((tip) => {
     const match = matchesById.get(String(tip.partido_id));
     return {

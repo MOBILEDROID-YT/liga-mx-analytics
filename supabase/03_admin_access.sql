@@ -42,6 +42,21 @@ create policy "Admins can update tips"
 grant select on public.tips to anon, authenticated;
 grant update on public.tips to authenticated;
 
+create or replace function public.admin_list_tips()
+returns setof public.tips
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select tips.*
+  from public.tips
+  where public.is_admin();
+$$;
+
+revoke all on function public.admin_list_tips() from public;
+grant execute on function public.admin_list_tips() to authenticated;
+
 alter table public.partidos enable row level security;
 drop policy if exists "Public can read matches" on public.partidos;
 drop policy if exists "Admins can update matches" on public.partidos;
