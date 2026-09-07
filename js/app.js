@@ -108,8 +108,9 @@ function hasRecordedScore(match) {
 function isFinalMatch(match) {
   const state = normalizeText(match?.estado);
   if (state.includes('finaliz') || state.includes('termin') || state === 'finished' || state === 'completed' || state === 'played') return true;
+  if (hasRecordedScore(match)) return true;
   const matchDate = new Date(match?.fecha_hora_mx || 0).getTime();
-  return !state && hasRecordedScore(match) && Number.isFinite(matchDate) && matchDate < Date.now();
+  return !state && Number.isFinite(matchDate) && matchDate < Date.now();
 }
 
 function isLiveMatch(match) {
@@ -156,12 +157,16 @@ function sameTeamName(firstName, secondName) {
 
 function mentionsTeamName(text, teamName) {
   const normalizedText = normalizeText(text);
-  const normalizedTeam = normalizeText(teamName);
-  if (!normalizedText || !normalizedTeam) return false;
-  if (normalizedText.includes(normalizedTeam) || normalizedTeam.includes(normalizedText)) return true;
+  const rawTeamName = String(teamName ?? '');
+  const teamAliases = [normalizeText(rawTeamName), ...Array.from(rawTeamName.matchAll(/\(([^)]+)\)/g), (match) => normalizeText(match[1]))]
+    .filter(Boolean);
+  if (!normalizedText || !teamAliases.length) return false;
+  if (teamAliases.some((alias) => normalizedText.includes(alias) || alias.includes(normalizedText))) return true;
+  const normalizedTeam = teamAliases[0];
   const genericWords = ['club', 'futbol', 'football', 'deportivo', 'atletico'];
   const teamTokens = normalizedTeam.split(' ').filter((token) => token.length >= 4 && !genericWords.includes(token));
-  return teamTokens.some((token) => new RegExp(`\\b${token}\\b`).test(normalizedText));
+  return teamAliases.some((alias) => alias.split(' ').some((token) => token.length >= 4 && !genericWords.includes(token) && new RegExp(`\\b${token}\\b`).test(normalizedText)))
+    || teamTokens.some((token) => new RegExp(`\\b${token}\\b`).test(normalizedText));
 }
 
 function matchContainsTeam(match, abbreviation) {
