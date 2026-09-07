@@ -72,8 +72,25 @@ function renderMatchOptions() {
 function renderTipOptions() {
   const select = admin$('tip-select');
   if (!select) return;
-  select.innerHTML = adminState.tips.length
-    ? adminState.tips.map((tip) => `<option value="${adminEscape(tip.id)}">J${adminEscape(tip.jornada)} · ${adminEscape(tip.local)} vs ${adminEscape(tip.visitante)} · ${adminEscape(tip.prediccion)}</option>`).join('')
+  const groups = new Map();
+  [...adminState.tips]
+    .sort((first, second) => {
+      const jornadaDifference = Number(first.jornada || 0) - Number(second.jornada || 0);
+      if (jornadaDifference) return jornadaDifference;
+      return String(first.local || '').localeCompare(String(second.local || ''), 'es');
+    })
+    .forEach((tip) => {
+      const jornada = tip.jornada || '—';
+      if (!groups.has(jornada)) groups.set(jornada, []);
+      groups.get(jornada).push(tip);
+    });
+
+  select.innerHTML = groups.size
+    ? [...groups.entries()].map(([jornada, tips]) => `
+        <optgroup label="Jornada ${adminEscape(jornada)}">
+          ${tips.map((tip) => `<option value="${adminEscape(tip.id)}">${adminEscape(tip.local)} vs ${adminEscape(tip.visitante)} · ${adminEscape(tip.prediccion)}</option>`).join('')}
+        </optgroup>
+      `).join('')
     : '<option value="">No hay tips disponibles</option>';
   fillTipForm();
 }
