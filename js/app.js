@@ -22,6 +22,8 @@ const appState = {
   authMode: 'login'
 };
 
+const CURRENT_JORNADA_OVERRIDE = 8;
+
 const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas'];
 
 const categoryMeta = {
@@ -168,6 +170,8 @@ function matchContainsTeam(match, abbreviation) {
 }
 
 function getCurrentJornada() {
+  if (CURRENT_JORNADA_OVERRIDE) return CURRENT_JORNADA_OVERRIDE;
+
   const activeJornadas = appState.matches
     .filter((match) => !isFinalMatch(match) && isCurrentOrFutureMatch(match))
     .map((match) => numericValue(match.jornada, 0))
