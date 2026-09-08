@@ -42,6 +42,16 @@ create policy "Admins can update tips"
 grant select on public.tips to anon, authenticated;
 grant update on public.tips to authenticated;
 
+drop policy if exists "Admins can insert tips" on public.tips;
+
+create policy "Admins can insert tips"
+  on public.tips
+  for insert
+  to authenticated
+  with check (public.is_admin());
+
+grant insert on public.tips to authenticated;
+
 create or replace function public.admin_list_tips()
 returns setof public.tips
 language sql

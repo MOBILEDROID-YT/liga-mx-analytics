@@ -2,7 +2,8 @@ const adminState = {
   user: null,
   isAdmin: false,
   matches: [],
-  tips: []
+  tips: [],
+  tipDraftMatchId: null
 };
 
 const admin$ = (id) => document.getElementById(id);
@@ -72,26 +73,45 @@ function renderMatchOptions() {
 function renderTipOptions() {
   const select = admin$('tip-select');
   if (!select) return;
+  const selectedValue = select.value;
+  const tipsByMatch = new Map();
+  adminState.tips.forEach((tip) => {
+    const matchId = String(tip.partido_id || '');
+    if (!tipsByMatch.has(matchId)) tipsByMatch.set(matchId, []);
+    tipsByMatch.get(matchId).push(tip);
+  });
   const groups = new Map();
-  [...adminState.tips]
+  [...adminState.matches]
     .sort((first, second) => {
-      const jornadaDifference = Number(first.jornada || 0) - Number(second.jornada || 0);
+      const jornadaDifference = Number(second.jornada || 0) - Number(first.jornada || 0);
       if (jornadaDifference) return jornadaDifference;
-      return String(first.local || '').localeCompare(String(second.local || ''), 'es');
+      return new Date(first.fecha_hora_mx || 0) - new Date(second.fecha_hora_mx || 0);
     })
-    .forEach((tip) => {
-      const jornada = tip.jornada || '—';
+    .forEach((match) => {
+      const jornada = match.jornada || '—';
       if (!groups.has(jornada)) groups.set(jornada, []);
-      groups.get(jornada).push(tip);
+      const matchTips = tipsByMatch.get(String(match.id)) || [];
+      if (matchTips.length) {
+        matchTips.forEach((tip) => groups.get(jornada).push({
+          value: `tip:${tip.id}`,
+          label: `${match.local} vs ${match.visitante} · ${tip.prediccion || 'Tip sin predicción'}`
+        }));
+      } else {
+        groups.get(jornada).push({
+          value: `new:${match.id}`,
+          label: `${match.local} vs ${match.visitante} · Nuevo tip`
+        });
+      }
     });
 
   select.innerHTML = groups.size
-    ? [...groups.entries()].map(([jornada, tips]) => `
+    ? [...groups.entries()].map(([jornada, options]) => `
         <optgroup label="Jornada ${adminEscape(jornada)}">
-          ${tips.map((tip) => `<option value="${adminEscape(tip.id)}">${adminEscape(tip.local)} vs ${adminEscape(tip.visitante)} · ${adminEscape(tip.prediccion)}</option>`).join('')}
+          ${options.map((option) => `<option value="${adminEscape(option.value)}">${adminEscape(option.label)}</option>`).join('')}
         </optgroup>
       `).join('')
-    : '<option value="">No hay tips disponibles</option>';
+    : '<option value="">No hay partidos disponibles</option>';
+  if (selectedValue && [...select.options].some((option) => option.value === selectedValue)) select.value = selectedValue;
   fillTipForm();
 }
 
@@ -104,7 +124,20 @@ function fillMatchForm() {
 }
 
 function fillTipForm() {
-  const tip = adminState.tips.find((item) => String(item.id) === String(admin$('tip-select')?.value));
+  const selection = admin$('tip-select')?.value || '';
+  if (selection.startsWith('new:')) {
+    adminState.tipDraftMatchId = selection.slice(4);
+    admin$('tip-category').value = 'base';
+    admin$('tip-market').value = '';
+    admin$('tip-prediction').value = '';
+    admin$('tip-confidence').value = '';
+    admin$('tip-result').value = '';
+    admin$('tip-reason').value = '';
+    return;
+  }
+  adminState.tipDraftMatchId = null;
+  const tipId = selection.startsWith('tip:') ? selection.slice(4) : selection;
+  const tip = adminState.tips.find((item) => String(item.id) === String(tipId));
   if (!tip) return;
   admin$('tip-category').value = tip.categoria || 'base';
   admin$('tip-market').value = tip.tipo_apuesta || '';
@@ -246,8 +279,10 @@ async function saveMatch(event) {
 
 async function saveTip(event) {
   event.preventDefault();
-  const id = admin$('tip-select')?.value;
-  if (!id) return;
+  const selection = admin$('tip-select')?.value || '';
+  if (!selection) return;
+  const isNewTip = selection.startsWith('new:');
+  const id = isNewTip ? '' : (selection.startsWith('tip:') ? selection.slice(4) : selection);
   const result = admin$('tip-result').value || null;
   const confidence = admin$('tip-confidence').value;
   const payload = {
@@ -259,15 +294,34 @@ async function saveTip(event) {
     resultado: result,
     resultado_actualizado_en: result ? new Date().toISOString() : null
   };
+  if (isNewTip) {
+    payload.partido_id = adminState.tipDraftMatchId;
+    payload.es_premium = false;
+  }
   adminFeedback('Guardando tip...', 'loading');
-  const { error } = await supabaseClient.from('tips').update(payload).eq('id', id);
+  const response = isNewTip
+    ? await supabaseClient.from('tips').insert(payload).select().single()
+    : await supabaseClient.from('tips').update(payload).eq('id', id);
+  const { data, error } = response;
   if (error) {
     adminFeedback(error.message || 'No se pudo guardar el tip.', 'error');
     return;
   }
+  if (isNewTip && data) {
+    const match = adminState.matches.find((item) => String(item.id) === String(payload.partido_id));
+    adminState.tips.push({
+      ...data,
+      jornada: match?.jornada || '—',
+      local: match?.local || 'Partido no encontrado',
+      visitante: match?.visitante || `ID ${payload.partido_id || 'sin partido'}`
+    });
+    renderTipOptions();
+    admin$('tip-select').value = `tip:${data.id}`;
+    fillTipForm();
+  }
   const tip = adminState.tips.find((item) => String(item.id) === String(id));
   if (tip) Object.assign(tip, payload);
-  adminFeedback('Tip guardado correctamente.', 'success');
+  adminFeedback(isNewTip ? 'Nuevo tip creado correctamente.' : 'Tip guardado correctamente.', 'success');
 }
 
 function bindAdminEvents() {
