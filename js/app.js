@@ -512,10 +512,12 @@ function getPredictedOutcome(row, match) {
   const localDoesNotLose = mentionsLocalTeam && /\bno pierd\w*/.test(text);
   const visitorDoesNotWin = mentionsVisitorTeam && /\bno gan\w*/.test(text);
   const visitorDoesNotLose = mentionsVisitorTeam && /\bno pierd\w*/.test(text);
+  const noDraw = /\b(?:no|sin)\s+(?:hay\s+)?empate\b/.test(text);
   const drawWithLocal = /\bempate\b/.test(text) && mentionsLocalTeam && !mentionsVisitorTeam;
   const drawWithVisitor = /\bempate\b/.test(text) && mentionsVisitorTeam && !mentionsLocalTeam;
   const drawAndVisitor = /(?:empate.*(?:derrota|visita|visitante)|(?:derrota|visita|visitante).*empate)/.test(text);
   const drawAndLocal = /(?:empate.*local|local.*empate)/.test(text);
+  if (noDraw && mentionsLocalTeam && mentionsVisitorTeam) return ['1', '2'].includes(outcome) ? 'acertado' : 'fallado';
   if (localDoesNotWin || visitorDoesNotLose || drawWithVisitor || drawAndVisitor) return ['x', '2'].includes(outcome) ? 'acertado' : 'fallado';
   if (localDoesNotLose || visitorDoesNotWin || drawWithLocal || drawAndLocal) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';
   if (/(?:\b1x\b|local.*empate|empate.*local)/.test(text)) return ['1', 'x'].includes(outcome) ? 'acertado' : 'fallado';

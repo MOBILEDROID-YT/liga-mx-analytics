@@ -1,10 +1,10 @@
-const cacheName = 'futbol-mx-analisis-pro-shell-v20';
+const cacheName = 'futbol-mx-analisis-pro-shell-v21';
 const appShell = [
   './',
   './index.html',
   './css/style.css?v=12',
   './js/config.js',
-  './js/app.js?v=12',
+  './js/app.js?v=13',
   './manifest.webmanifest',
   './assets/icon.svg',
   './privacidad.html',
