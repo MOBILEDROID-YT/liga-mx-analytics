@@ -2332,3 +2332,44 @@ select:focus-visible {
   .simulation-status { grid-column: 2 / -1; text-align: left; }
   .footer-inner { align-items: flex-start; flex-direction: column; justify-content: center; }
 }
+.game-heading { align-items: center; }
+.game-ball-decoration { display: grid; width: 92px; height: 92px; place-items: center; color: var(--yellow); background: linear-gradient(145deg, var(--green-dark), var(--navy)); border-radius: 24px; font-size: 3rem; box-shadow: var(--shadow); }
+.game-container { display: grid; gap: 18px; padding-bottom: 42px; }
+.game-intro, .game-panel, .game-profile, .game-history { padding: 26px; }
+.game-intro h2, .game-panel h2, .game-profile h2, .game-history h2 { margin: 6px 0 8px; color: var(--navy); font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; }
+.game-intro p, .game-panel > p, .game-event-note { color: var(--muted); }
+.game-role-grid, .game-team-options, .game-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+.game-role-card, .game-team-option, .game-action-card { display: grid; gap: 8px; padding: 20px; color: var(--navy); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 16px; text-align: left; cursor: pointer; font-family: inherit; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.game-role-card:hover, .game-team-option:hover, .game-action-card:hover { border-color: var(--green); box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+.game-role-icon, .game-action-card > span { font-size: 2rem; }
+.game-role-card strong, .game-team-option strong, .game-action-card strong { font-size: 1.05rem; }
+.game-role-card small, .game-team-option small, .game-action-card small { color: var(--muted); line-height: 1.45; }
+.game-role-card em { width: max-content; padding: 4px 8px; color: var(--navy); background: var(--yellow); border-radius: 999px; font-size: .65rem; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.game-role-disabled { opacity: .8; cursor: default; }
+.game-team-option span { color: var(--green-dark); font-size: .75rem; font-weight: 800; }
+.game-panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.game-season-badge { padding: 8px 12px; color: var(--navy); background: var(--yellow); border-radius: 999px; font-size: .7rem; font-weight: 900; white-space: nowrap; }
+.game-career-layout { display: grid; grid-template-columns: minmax(250px, .8fr) minmax(0, 1.4fr); gap: 18px; }
+.game-profile-top { display: flex; align-items: center; gap: 14px; margin: 18px 0; }
+.game-avatar { display: grid; width: 62px; height: 62px; place-items: center; color: var(--white); background: linear-gradient(135deg, var(--green-dark), var(--navy)); border-radius: 50%; font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 800; }
+.game-profile-top h2 { margin: 0; font-size: 1.65rem; }
+.game-profile-top p { margin: 3px 0 0; color: var(--muted); font-size: .78rem; }
+.game-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.game-stat-grid div { padding: 12px; background: var(--surface-soft); border-radius: 10px; }
+.game-stat-grid span { display: block; color: var(--muted); font-size: .66rem; font-weight: 800; text-transform: uppercase; }
+.game-stat-grid strong { display: block; margin-top: 3px; color: var(--navy); font-size: 1.3rem; }
+.game-save-note { color: var(--muted); font-size: .7rem; }
+.game-event-note { min-height: 42px; padding: 12px 14px; background: var(--surface-soft); border-left: 3px solid var(--yellow); border-radius: 8px; line-height: 1.45; }
+.game-action-card { min-height: 150px; }
+.game-action-complete, .game-finished { padding: 18px; background: #ecf9f2; border: 1px solid #b9ead0; border-radius: 12px; }
+.game-action-complete strong, .game-finished strong { color: var(--green-dark); }
+.game-action-complete p, .game-finished p { color: var(--muted); font-size: .82rem; }
+.game-history .game-panel-heading > span { color: var(--muted); font-size: .75rem; font-weight: 800; }
+.game-history-list { display: grid; gap: 8px; margin-top: 16px; }
+.game-history-row { display: grid; grid-template-columns: .55fr 1.5fr repeat(3, 1fr); gap: 10px; align-items: center; padding: 13px; background: var(--surface-soft); border-radius: 9px; color: var(--muted); font-size: .76rem; }
+.game-history-row strong { color: var(--navy); }
+@media (max-width: 760px) {
+  .game-role-grid, .game-team-options, .game-action-grid, .game-career-layout { grid-template-columns: 1fr; }
+  .game-panel-heading { flex-direction: column; }
+  .game-history-row { grid-template-columns: 1fr 1fr; }
+}

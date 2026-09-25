@@ -24,7 +24,7 @@ const appState = {
 
 const CURRENT_JORNADA_OVERRIDE = 10;
 
-const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas'];
+const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas', 'juego'];
 
 const categoryMeta = {
   base: { label: 'Base', className: 'tip-base', dot: 'green' },
@@ -958,6 +958,7 @@ function setView(view, updateHash = true) {
     renderQuiniela();
     renderSimulator();
   }
+  if (nextView === 'juego') window.renderJuego?.();
 }
 
 function searchTeam() {
@@ -988,6 +989,7 @@ function renderAll() {
   renderPalmares($('palmares-select')?.value || '');
   renderQuiniela();
   renderSimulator();
+  window.renderJuego?.();
 }
 
 function populateSelectors() {

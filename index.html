@@ -7,7 +7,7 @@
   <meta name="description" content="F&uacute;tbol MX An&aacute;lisis PRO: datos, tips y herramientas para analizar cada jornada.">
   <title>F&uacute;tbol MX An&aacute;lisis PRO</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
   <header class="app-header">
@@ -30,6 +30,7 @@
         <a class="nav-link" href="#equipos" data-view-link="equipos">Equipos</a>
         <a class="nav-link" href="#analisis" data-view-link="analisis">Análisis</a>
         <a class="nav-link" href="#herramientas" data-view-link="herramientas">Herramientas</a>
+        <a class="nav-link" href="#juego" data-view-link="juego">Juego</a>
       </nav>
 
       <div class="header-actions">
@@ -322,6 +323,20 @@
         </article>
       </div>
     </section>
+
+    <section id="view-juego" class="app-view" data-view="juego">
+      <div class="page-container">
+        <div class="page-heading game-heading">
+          <div>
+            <span class="eyebrow">MODO CARRERA</span>
+            <h1>Juego</h1>
+            <p>Construye tu carrera dentro del fútbol mexicano y toma decisiones temporada a temporada.</p>
+          </div>
+          <div class="game-ball-decoration" aria-hidden="true">⚽</div>
+        </div>
+        <div id="game-container" class="game-container"></div>
+      </div>
+    </section>
   </main>
 
   <div id="team-modal" class="team-modal hidden" role="dialog" aria-modal="true" aria-label="Perfil del equipo">
@@ -412,6 +427,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/app.js?v=16"></script>
+  <script src="js/juego.js?v=1"></script>
 </body>
 </html>
