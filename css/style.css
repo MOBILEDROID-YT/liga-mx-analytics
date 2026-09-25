@@ -2373,3 +2373,29 @@ select:focus-visible {
   .game-panel-heading { flex-direction: column; }
   .game-history-row { grid-template-columns: 1fr 1fr; }
 }
+
+.director-team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+.director-team-card, .director-market-card { border: 1px solid var(--line, #dbe3ee); border-radius: 14px; background: #fff; color: var(--navy, #092044); }
+.director-team-card { display: flex; min-height: 88px; padding: 16px; flex-direction: column; align-items: flex-start; justify-content: space-between; text-align: left; cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.director-team-card:hover { border-color: #0b7f55; box-shadow: 0 8px 20px rgba(9, 32, 68, .08); transform: translateY(-2px); }
+.director-team-card small, .director-market-card small { display: block; color: #6d7d95; font-size: .78rem; margin-top: 6px; }
+.director-dashboard-layout, .director-lower-grid { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 20px; margin-bottom: 20px; }
+.director-budget { display: flex; margin: 20px 0; padding: 18px; flex-direction: column; gap: 5px; border-radius: 14px; background: linear-gradient(135deg, #062a46, #087d58); color: #fff; }
+.director-budget span { opacity: .8; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+.director-budget strong { font-size: 1.8rem; }
+.director-alert { margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; background: #fff4cf; color: #8a6500; font-weight: 700; }
+.director-alert-danger { background: #ffe3e7; color: #b3233c; }
+.director-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.director-controls button { flex: 1 1 160px; }
+.director-market-grid, .director-offer-list, .director-roster-list { display: grid; gap: 10px; }
+.director-market-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; }
+.director-market-card .primary-btn, .director-market-card .ghost-btn { flex: 0 0 auto; padding: 10px 14px; font-size: .8rem; }
+.director-roster-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e7edf4; }
+.director-roster-list span { color: #6d7d95; font-size: .82rem; text-align: right; }
+.director-market-card button:disabled, .director-controls button:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 900px) { .director-team-grid, .director-dashboard-layout, .director-lower-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .director-team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .director-market-card, .director-roster-list > div { align-items: flex-start; flex-direction: column; }
+  .director-market-card button, .director-roster-list span { width: 100%; text-align: left; }
+}

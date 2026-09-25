@@ -1,6 +1,7 @@
 const gameStorageKey = 'futbol-mx-analisis-pro-game-v1';
 
 let gameState = loadGameState();
+let directorPlayerPool = [];
 
 function gameElement(id) {
   return document.getElementById(id);
@@ -44,7 +45,19 @@ function defaultGameState() {
     injured: false,
     suspended: false,
     history: [],
-    startOptions: []
+    startOptions: [],
+    directorSeason: 1,
+    directorBudget: 30000000,
+    directorRoster: [],
+    directorMarket: [],
+    directorOffers: [],
+    directorTransfers: [],
+    directorHistory: [],
+    directorYouthLevel: 0,
+    directorTvDeal: false,
+    directorDataLoaded: false,
+    directorFired: false,
+    directorMessage: ''
   };
 }
 
@@ -63,6 +76,163 @@ function saveGameState() {
 
 function getGameTeam(abbreviation) {
   return gameTeams().find((team) => team.abreviatura === abbreviation);
+}
+
+function directorMoney(value) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value) || 0);
+}
+
+function directorPlayerKey(player, index = 0) {
+  return String(player.id || `${player.abreviatura || player.teamAbbreviation || 'jugador'}-${player.nombre || player.name || index}`).replaceAll(' ', '-');
+}
+
+function directorMapPlayer(player, teamAbbreviation, index = 0) {
+  const team = getGameTeam(teamAbbreviation || player.abreviatura);
+  const age = Number(player.edad || player.age) || randomNumber(18, 30);
+  const value = Number(player.valor || player.value) || randomNumber(700000, 4500000);
+  return {
+    id: player.id,
+    key: directorPlayerKey({ ...player, abreviatura: teamAbbreviation || player.abreviatura }, index),
+    name: player.nombre || player.name || `Jugador de cantera ${index + 1}`,
+    position: player.posicion || player.position || 'Jugador',
+    age,
+    value,
+    teamAbbreviation: teamAbbreviation || player.abreviatura || '',
+    teamName: team?.nombre || 'Equipo de origen'
+  };
+}
+
+function directorFallbackPlayers(teamAbbreviation) {
+  return ['Portero titular', 'Defensa central', 'Mediocampista creativo', 'Extremo derecho', 'Delantero centro']
+    .map((name, index) => directorMapPlayer({ nombre: name, posicion: 'Plantilla', edad: 19 + index }, teamAbbreviation, index));
+}
+
+async function loadDirectorPlayers() {
+  if (typeof supabaseClient === 'undefined') return [];
+  const { data, error } = await supabaseClient.from('jugadores_equipo').select('*');
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+function directorBuildOffers() {
+  const otherTeams = gameTeams().filter((team) => team.abreviatura !== gameState.teamAbbreviation);
+  const candidates = shuffle(directorPlayerPool
+    .filter((player) => player.abreviatura && player.abreviatura !== gameState.teamAbbreviation)
+    .map((player, index) => directorMapPlayer(player, player.abreviatura, index)));
+  const market = candidates.length ? candidates.slice(0, 3) : shuffle(otherTeams).slice(0, 3).map((team, index) => directorMapPlayer({ nombre: `Talento juvenil ${index + 1}`, posicion: 'Jugador', edad: randomNumber(18, 22) }, team.abreviatura, index));
+  gameState.directorMarket = market;
+  gameState.directorOffers = shuffle(gameState.directorRoster).slice(0, 3).map((player, index) => {
+    const buyer = shuffle(otherTeams)[index % Math.max(1, otherTeams.length)];
+    return { ...player, offerId: `offer-${player.key}`, buyerTeam: buyer?.nombre || 'Club interesado', amount: Math.round(player.value * (1.1 + Math.random() * 0.65)) };
+  });
+}
+
+function startDirectorMode() {
+  gameState = { ...defaultGameState(), mode: 'director', phase: 'director-choose-team', directorMessage: 'Elige el club que vas a dirigir.' };
+  directorPlayerPool = [];
+  saveGameState();
+  renderJuego();
+}
+
+async function selectDirectorTeam(abbreviation) {
+  const team = getGameTeam(abbreviation);
+  if (!team) return;
+  gameState.teamAbbreviation = team.abreviatura;
+  gameState.phase = 'director-dashboard';
+  gameState.directorDataLoaded = false;
+  gameState.directorMessage = `Cargando la plantilla actual de ${team.nombre}...`;
+  saveGameState();
+  renderJuego();
+  try {
+    directorPlayerPool = await loadDirectorPlayers();
+  } catch {
+    directorPlayerPool = [];
+  }
+  const roster = directorPlayerPool
+    .filter((player) => player.abreviatura === team.abreviatura)
+    .map((player, index) => directorMapPlayer(player, team.abreviatura, index));
+  gameState.directorRoster = roster.length ? roster : directorFallbackPlayers(team.abreviatura);
+  gameState.directorDataLoaded = true;
+  directorBuildOffers();
+  gameState.directorMessage = roster.length
+    ? `Plantilla cargada. Puedes negociar con jugadores registrados en Supabase.`
+    : 'No se encontró plantilla pública para este club; se cargó una plantilla de demostración para probar el modo.';
+  saveGameState();
+  renderJuego();
+}
+
+function directorBuy(playerKey) {
+  const player = gameState.directorMarket.find((item) => item.key === playerKey);
+  if (!player || gameState.directorFired) return;
+  if (gameState.directorBudget < player.value) {
+    gameState.directorMessage = `No tienes presupuesto suficiente para fichar a ${player.name}.`;
+  } else {
+    gameState.directorBudget -= player.value;
+    gameState.directorRoster.push({ ...player, teamAbbreviation: gameState.teamAbbreviation, teamName: getGameTeam(gameState.teamAbbreviation)?.nombre || '' });
+    gameState.directorTransfers.push({ type: 'Fichaje', player: player.name, amount: -player.value, season: gameState.directorSeason });
+    gameState.directorMessage = `Fichaste a ${player.name} por ${directorMoney(player.value)}.`;
+    directorBuildOffers();
+  }
+  saveGameState();
+  renderJuego();
+}
+
+function directorSell(offerId) {
+  const offer = gameState.directorOffers.find((item) => item.offerId === offerId);
+  if (!offer || gameState.directorFired) return;
+  gameState.directorBudget += offer.amount;
+  gameState.directorRoster = gameState.directorRoster.filter((player) => player.key !== offer.key);
+  gameState.directorTransfers.push({ type: 'Venta', player: offer.name, amount: offer.amount, season: gameState.directorSeason });
+  gameState.directorMessage = `${offer.buyerTeam} ofreció ${directorMoney(offer.amount)} por ${offer.name}. Venta aceptada.`;
+  directorBuildOffers();
+  saveGameState();
+  renderJuego();
+}
+
+function directorSponsorship() {
+  if (gameState.directorTvDeal || gameState.directorFired) return;
+  gameState.directorBudget += 4000000;
+  gameState.directorTvDeal = true;
+  gameState.directorTransfers.push({ type: 'Patrocinio televisivo', player: 'Acuerdo de temporada', amount: 4000000, season: gameState.directorSeason });
+  gameState.directorMessage = 'Firmaste el patrocinio televisivo de la temporada por 4 millones de dólares.';
+  saveGameState();
+  renderJuego();
+}
+
+function directorAcademy() {
+  if (gameState.directorFired) return;
+  const cost = 2000000;
+  if (gameState.directorBudget < cost) {
+    gameState.directorMessage = 'No tienes presupuesto suficiente para invertir en fuerzas básicas.';
+  } else {
+    gameState.directorBudget -= cost;
+    gameState.directorYouthLevel += 1;
+    gameState.directorTransfers.push({ type: 'Fuerzas básicas', player: `Nivel ${gameState.directorYouthLevel}`, amount: -cost, season: gameState.directorSeason });
+    gameState.directorMessage = 'Invertiste 2 millones en fuerzas básicas. El nivel de cantera aumentó.';
+  }
+  saveGameState();
+  renderJuego();
+}
+
+function directorSimulateSeason() {
+  if (gameState.directorFired) return;
+  const tvIncome = gameState.directorTvDeal ? 4000000 : 0;
+  const performanceBonus = randomNumber(0, 3000000) + gameState.directorYouthLevel * 500000;
+  const operatingCost = randomNumber(800000, 2200000);
+  const change = tvIncome + performanceBonus - operatingCost;
+  gameState.directorBudget += change;
+  gameState.directorHistory.push({ season: gameState.directorSeason, change, budget: gameState.directorBudget });
+  gameState.directorSeason += 1;
+  gameState.directorTvDeal = false;
+  gameState.directorMessage = `Temporada simulada: ${change >= 0 ? '+' : ''}${directorMoney(change)} en el balance.`;
+  if (gameState.directorBudget < 100000) {
+    gameState.directorFired = true;
+    gameState.directorMessage = 'El presupuesto bajó de 100 mil dólares y la directiva te despidió.';
+  } else {
+    directorBuildOffers();
+  }
+  saveGameState();
+  renderJuego();
 }
 
 function drawSeasonOptions() {
@@ -194,8 +364,8 @@ function renderGameIntro(container) {
         <button class="game-role-card" type="button" data-game-action="start-player">
           <span class="game-role-icon">⚽</span><strong>Jugador</strong><small>Construye una carrera de los 18 a los 40 años.</small>
         </button>
-        <button class="game-role-card game-role-disabled" type="button" data-game-action="director-info">
-          <span class="game-role-icon">📋</span><strong>Director deportivo</strong><small>Fichajes, presupuesto y decisiones del club.</small><em>Próximamente</em>
+        <button class="game-role-card" type="button" data-game-action="start-director">
+          <span class="game-role-icon">📋</span><strong>Director deportivo</strong><small>Fichajes, presupuesto y decisiones del club.</small><em>Jugar ahora</em>
         </button>
       </div>
     </article>
@@ -237,13 +407,62 @@ function renderPlayerCareer(container) {
   `;
 }
 
+function renderDirectorTeamChoice(container) {
+  const teams = gameTeams();
+  container.innerHTML = `
+    <article class="game-panel surface-card">
+      <div class="game-panel-heading"><div><span class="eyebrow">MODO DIRECTOR DEPORTIVO</span><h2>Elige el club que dirigirás</h2></div><span class="game-season-badge">$30 M USD</span></div>
+      <p>Comienzas la primera temporada con un presupuesto de 30 millones de dólares. Las plantillas se leen desde los jugadores registrados en Supabase.</p>
+      <div class="director-team-grid">${teams.map((team) => `<button class="director-team-card" type="button" data-game-action="select-director-team" data-team="${gameEscape(team.abreviatura)}"><strong>${gameEscape(team.nombre)}</strong><small>Elegir club →</small></button>`).join('')}</div>
+      <button class="text-btn" type="button" data-game-action="reset-game">Volver a elegir modo</button>
+    </article>
+  `;
+}
+
+function renderDirectorDashboard(container) {
+  const team = getGameTeam(gameState.teamAbbreviation);
+  if (!gameState.directorDataLoaded) {
+    container.innerHTML = '<article class="surface-card empty-state">Cargando plantilla y mercado de jugadores...</article>';
+    return;
+  }
+  const market = gameState.directorMarket || [];
+  const offers = gameState.directorOffers || [];
+  const roster = gameState.directorRoster || [];
+  const history = [...(gameState.directorHistory || [])].reverse();
+  const budgetWarning = gameState.directorBudget < 100000 ? '<div class="director-alert director-alert-danger">La directiva te despidió por bajar de 100 mil dólares.</div>' : gameState.directorBudget < 500000 ? '<div class="director-alert">Advertencia: tienes menos de 500 mil dólares y tu puesto está en riesgo.</div>' : '';
+  const disabled = gameState.directorFired ? 'disabled' : '';
+  container.innerHTML = `
+    <div class="director-dashboard-layout">
+      <article class="game-profile surface-card">
+        <span class="eyebrow">MODO DIRECTOR DEPORTIVO</span>
+        <div class="game-profile-top"><div class="game-avatar">${gameState.directorSeason}</div><div><h2>${gameEscape(team?.nombre || 'Club')}</h2><p>Temporada ${gameState.directorSeason} · Balance del club</p></div></div>
+        <div class="director-budget"><span>Presupuesto disponible</span><strong>${directorMoney(gameState.directorBudget)}</strong></div>
+        ${budgetWarning}
+        <div class="game-stat-grid"><div><span>Jugadores</span><strong>${roster.length}</strong></div><div><span>Cantera</span><strong>Nivel ${gameState.directorYouthLevel}</strong></div><div><span>Temporada</span><strong>${gameState.directorSeason}</strong></div></div>
+        <p class="game-event-note">${gameEscape(gameState.directorMessage)}</p>
+        <div class="director-controls"><button class="primary-btn" type="button" data-game-action="director-simulate" ${disabled}>Simular temporada</button><button class="ghost-btn" type="button" data-game-action="director-sponsorship" ${gameState.directorTvDeal || gameState.directorFired ? 'disabled' : ''}>Firmar patrocinio +$4 M</button><button class="ghost-btn" type="button" data-game-action="director-academy" ${disabled}>Invertir cantera -$2 M</button></div>
+        <button class="text-btn" type="button" data-game-action="reset-game">Salir y reiniciar partida</button>
+      </article>
+      <article class="game-panel surface-card">
+        <div class="game-panel-heading"><div><span class="eyebrow">MERCADO DE FICHAJES</span><h2>Jugadores disponibles</h2></div><span>${market.length} opciones</span></div>
+        <div class="director-market-grid">${market.length ? market.map((player) => `<div class="director-market-card"><div><strong>${gameEscape(player.name)}</strong><small>${gameEscape(player.position)} · ${gameEscape(player.teamName)} · ${player.age} años</small></div><button class="primary-btn" type="button" data-game-action="director-buy" data-player-key="${gameEscape(player.key)}" ${disabled}>Fichar ${directorMoney(player.value)}</button></div>`).join('') : '<div class="empty-state">No hay jugadores disponibles.</div>'}</div>
+      </article>
+    </div>
+    <div class="director-lower-grid">
+      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">OFERTAS POR TU PLANTILLA</span><h2>Decide si vendes</h2></div></div>${offers.length ? `<div class="director-offer-list">${offers.map((offer) => `<div class="director-market-card"><div><strong>${gameEscape(offer.name)}</strong><small>${gameEscape(offer.buyerTeam)} ofrece ${directorMoney(offer.amount)}</small></div><button class="ghost-btn" type="button" data-game-action="director-sell" data-offer-id="${gameEscape(offer.offerId)}" ${disabled}>Aceptar venta</button></div>`).join('')}</div>` : '<div class="empty-state">Todavía no hay ofertas por tus jugadores.</div>'}</article>
+      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">PLANTILLA ACTUAL</span><h2>Jugadores del club</h2></div><span>${roster.length} registrados</span></div><div class="director-roster-list">${roster.slice(0, 10).map((player) => `<div><strong>${gameEscape(player.name)}</strong><span>${gameEscape(player.position)} · Valor ${directorMoney(player.value)}</span></div>`).join('')}</div>${roster.length > 10 ? `<p class="game-save-note">Se muestran 10 de ${roster.length} jugadores.</p>` : ''}</article>
+    </div>
+    <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">HISTORIAL FINANCIERO</span><h2>Movimientos y temporadas</h2></div></div>${history.length ? `<div class="game-history-list">${history.map((item) => `<div class="game-history-row"><strong>Temporada ${item.season}</strong><span>${item.change >= 0 ? '+' : ''}${directorMoney(item.change)}</span><span>Balance ${directorMoney(item.budget)}</span></div>`).join('')}</div>` : '<div class="empty-state">Los movimientos aparecerán aquí.</div>'}</article>
+  `;
+}
+
 function renderDirectorPreview(container) {
   container.innerHTML = `
     <article class="game-intro surface-card">
-      <span class="eyebrow">PRÓXIMA FASE</span>
+      <span class="eyebrow">MODO DIRECTOR DEPORTIVO</span>
       <h2>Modo director deportivo</h2>
-      <p>Esta fase incluirá presupuesto inicial de 30 millones de dólares, fichajes, ofertas por tus jugadores, patrocinios y fuerzas básicas.</p>
-      <button class="ghost-btn" type="button" data-game-action="reset-game">Volver a elegir modo</button>
+      <p>Elige un club, administra 30 millones de dólares y toma el control del mercado.</p>
+      <button class="primary-btn" type="button" data-game-action="start-director">Comenzar partida</button>
     </article>
   `;
 }
@@ -259,6 +478,8 @@ function renderJuego() {
   if (gameState.phase === 'offers') renderPlayerOffers(container);
   if (gameState.phase === 'career' || gameState.phase === 'finished') renderPlayerCareer(container);
   if (gameState.phase === 'director-preview') renderDirectorPreview(container);
+  if (gameState.phase === 'director-choose-team') renderDirectorTeamChoice(container);
+  if (gameState.phase === 'director-dashboard') renderDirectorDashboard(container);
 }
 
 document.addEventListener('click', (event) => {
@@ -266,14 +487,19 @@ document.addEventListener('click', (event) => {
   if (!button) return;
   const action = button.dataset.gameAction;
   if (action === 'start-player') startPlayerMode();
+  if (action === 'start-director') startDirectorMode();
   if (action === 'select-team') selectStartingTeam(button.dataset.team);
+  if (action === 'select-director-team') selectDirectorTeam(button.dataset.team);
   if (action === 'season-action') performSeasonAction(button.dataset.actionId);
   if (action === 'finish-season') finishSeason();
+  if (action === 'director-buy') directorBuy(button.dataset.playerKey);
+  if (action === 'director-sell') directorSell(button.dataset.offerId);
+  if (action === 'director-sponsorship') directorSponsorship();
+  if (action === 'director-academy') directorAcademy();
+  if (action === 'director-simulate') directorSimulateSeason();
   if (action === 'reset-game') resetGame();
   if (action === 'director-info') {
-    gameState.phase = 'director-preview';
-    saveGameState();
-    renderJuego();
+    startDirectorMode();
   }
 });
 
