@@ -61,6 +61,15 @@ function defaultGameState() {
     directorMessage: '',
     directorMarketQuery: '',
     directorClubProfile: null,
+    directorTicketPrice: 300,
+    directorMerchandisingLevel: 1,
+    directorInstallationLevels: { facilities: 1, training: 1, medical: 1 },
+    directorStaff: {
+      coach: { name: 'Cuerpo técnico base', level: 1, salary: 1200000 },
+      scout: { name: 'Red de scouting base', level: 1, salary: 700000 },
+      medical: { name: 'Departamento médico base', level: 1, salary: 700000 }
+    },
+    directorLoans: [],
     directorFinances: {
       cash: 30000000,
       transferBudget: 18000000,
@@ -70,6 +79,8 @@ function defaultGameState() {
       sponsorshipIncome: 0,
       matchdayIncome: 0,
       merchandisingIncome: 0,
+      wageExpense: 0,
+      maintenanceExpense: 0,
       projectedIncome: 0,
       projectedExpenses: 0
     },
@@ -132,11 +143,29 @@ function directorClubProfile(team) {
 }
 
 function syncDirectorFinance() {
+  const profile = gameState.directorClubProfile || directorClubProfile(getGameTeam(gameState.teamAbbreviation));
+  const finance = gameState.directorFinances || {};
+  const ticketPrice = Number(gameState.directorTicketPrice || profile.ticketPrice || 300);
+  const attendance = Math.max(.3, Math.min(.95, Number(profile.attendance || .55) - Math.max(0, ticketPrice - Number(profile.ticketPrice || 300)) / 1800 + Math.max(0, Number(profile.ticketPrice || 300) - ticketPrice) / 2400));
+  const salaryExpense = (gameState.directorRoster || []).filter((player) => !player.onLoan).reduce((total, player) => total + Number(player.salary || 0), 0) + Object.values(gameState.directorStaff || {}).reduce((total, staff) => total + Number(staff.salary || 0), 0);
+  const maintenanceExpense = Number(profile.facilities || 1) * 150000 + Number(profile.training || 1) * 120000 + Number(profile.medical || 1) * 100000;
+  const tvIncome = Number(finance.tvIncome || profile.reputation * 100000);
+  const sponsorshipIncome = Number(finance.sponsorshipIncome || profile.reputation * 70000);
+  const matchdayIncome = Math.round(Number(profile.capacity || 26000) * attendance * ticketPrice * 17);
+  const merchandisingIncome = Math.round(Number(profile.fans || 550000) * (4 + Number(gameState.directorMerchandisingLevel || 1) * 2));
   gameState.directorFinances = {
-    ...(gameState.directorFinances || {}),
+    ...finance,
     cash: gameState.directorBudget,
-    projectedIncome: Number(gameState.directorFinances?.tvIncome || 0) + Number(gameState.directorFinances?.sponsorshipIncome || 0) + Number(gameState.directorFinances?.matchdayIncome || 0) + Number(gameState.directorFinances?.merchandisingIncome || 0),
-    projectedExpenses: Number(gameState.directorFinances?.wageBudget || 0) + Number(gameState.directorFinances?.debt || 0)
+    tvIncome,
+    sponsorshipIncome,
+    matchdayIncome,
+    merchandisingIncome,
+    wageExpense: salaryExpense,
+    maintenanceExpense,
+    projectedIncome: tvIncome + sponsorshipIncome + matchdayIncome + merchandisingIncome,
+    projectedExpenses: salaryExpense + maintenanceExpense + Number(finance.debt || 0),
+    ticketPrice,
+    attendance
   };
 }
 
@@ -160,6 +189,7 @@ function directorMapPlayer(player, teamAbbreviation, index = 0) {
   const age = Number(player.edad || player.age) || randomNumber(18, 30);
   const value = Number(player.valor || player.value) || randomNumber(700000, 4500000);
   const releaseClause = Number(player.clausula || player.releaseClause) || (Math.random() < .28 ? (Math.random() < .5 ? 15000000 : 20000000) : 0);
+  const salary = Number(player.salario || player.salary) || randomNumber(250000, 850000);
   return {
     id: player.id,
     key: directorPlayerKey({ ...player, abreviatura: teamAbbreviation || player.abreviatura }, index),
@@ -167,6 +197,7 @@ function directorMapPlayer(player, teamAbbreviation, index = 0) {
     position: player.posicion || player.position || 'Jugador',
     age,
     value,
+    salary,
     releaseClause,
     negotiationAvailable: player.disponible_negociar !== false && Math.random() > .2,
     willingToJoin: Math.random() > .28,
@@ -196,8 +227,9 @@ function directorBuildOffers() {
     .filter((player) => !rosterKeys.has(player.key)));
   const market = candidates.length ? candidates : shuffle(otherTeams).map((team, index) => directorMapPlayer({ nombre: `Talento juvenil ${index + 1}`, posicion: 'Jugador', edad: randomNumber(18, 22) }, team.abreviatura, index));
   gameState.directorMarket = market;
-  const offerCount = randomNumber(0, Math.min(8, gameState.directorRoster.length));
-  gameState.directorOffers = shuffle(gameState.directorRoster).slice(0, offerCount).map((player, index) => {
+  const saleableRoster = gameState.directorRoster.filter((player) => !player.onLoan);
+  const offerCount = randomNumber(0, Math.min(8, saleableRoster.length));
+  gameState.directorOffers = shuffle(saleableRoster).slice(0, offerCount).map((player, index) => {
     const buyer = shuffle(otherTeams)[index % Math.max(1, otherTeams.length)];
     return { ...player, offerId: `offer-${player.key}`, buyerTeam: buyer?.nombre || 'Club interesado', amount: Math.round(player.value * (1.1 + Math.random() * 0.65)), offerSeason: gameState.directorSeason };
   });
@@ -218,6 +250,15 @@ async function selectDirectorTeam(abbreviation) {
   gameState.directorFired = false;
   gameState.directorDataLoaded = false;
   gameState.directorClubProfile = directorClubProfile(team);
+  gameState.directorTicketPrice = gameState.directorClubProfile.ticketPrice;
+  gameState.directorMerchandisingLevel = 1;
+  gameState.directorInstallationLevels = { facilities: gameState.directorClubProfile.facilities, training: gameState.directorClubProfile.training, medical: gameState.directorClubProfile.medical };
+  gameState.directorStaff = {
+    coach: { name: 'Cuerpo técnico base', level: 1, salary: 1200000 },
+    scout: { name: 'Red de scouting base', level: 1, salary: 700000 },
+    medical: { name: 'Departamento médico base', level: 1, salary: 700000 }
+  };
+  gameState.directorLoans = [];
   gameState.directorBudget = 30000000;
   gameState.directorFinances = {
     ...defaultGameState().directorFinances,
@@ -298,7 +339,6 @@ function directorSell(offerId) {
 
 function directorSponsorship() {
   if (gameState.directorTvDeal || gameState.directorFired) return;
-  gameState.directorBudget += 4000000;
   gameState.directorTvDeal = true;
   gameState.directorFinances.tvIncome = Number(gameState.directorFinances.tvIncome || 0) + 4000000;
   gameState.directorTransfers.push({ type: 'Patrocinio televisivo', player: 'Acuerdo de temporada', amount: 4000000, season: gameState.directorSeason });
@@ -319,6 +359,97 @@ function directorAcademy() {
     gameState.directorYouthLevel += 1;
     gameState.directorTransfers.push({ type: 'Fuerzas básicas', player: `Nivel ${gameState.directorYouthLevel}`, amount: -cost, season: gameState.directorSeason });
     gameState.directorMessage = 'Invertiste 2 millones en fuerzas básicas. El nivel de cantera aumentó.';
+  }
+  syncDirectorFinance();
+  saveGameState();
+  renderJuego();
+}
+
+function directorLoanPlayer(playerKey) {
+  const player = gameState.directorRoster.find((item) => item.key === playerKey);
+  if (!player || player.onLoan || gameState.directorFired) return;
+  const destination = shuffle(gameTeams().filter((team) => team.abreviatura !== gameState.teamAbbreviation))[0];
+  const fee = randomNumber(250, 900) * 1000;
+  player.onLoan = true;
+  player.loanReturnSeason = gameState.directorSeason + 1;
+  player.loanClub = destination?.nombre || 'Club asociado';
+  gameState.directorBudget += fee;
+  gameState.directorLoans.push({ player: player.name, club: player.loanClub, fee, season: gameState.directorSeason, returnSeason: player.loanReturnSeason });
+  gameState.directorTransfers.push({ type: 'Préstamo', player: player.name, amount: fee, season: gameState.directorSeason });
+  gameState.directorMessage = `Cediste a ${player.name} a ${player.loanClub} por ${directorMoney(fee)}. Regresará en la temporada ${player.loanReturnSeason}.`;
+  directorBuildOffers();
+  syncDirectorFinance();
+  saveGameState();
+  renderJuego();
+}
+
+function directorHireStaff(type) {
+  if (gameState.directorFired) return;
+  const labels = { coach: 'cuerpo técnico', scout: 'red de scouting', medical: 'departamento médico' };
+  const staff = gameState.directorStaff[type];
+  if (!staff || staff.level >= 3) return;
+  const cost = (staff.level + 1) * 1200000;
+  if (gameState.directorBudget < cost) {
+    gameState.directorMessage = `No tienes presupuesto para mejorar el ${labels[type]}.`;
+  } else {
+    staff.level += 1;
+    staff.salary += 350000;
+    staff.name = `${labels[type].replace(/^./, (letter) => letter.toUpperCase())} nivel ${staff.level}`;
+    gameState.directorBudget -= cost;
+    if (type === 'coach') gameState.directorClubProfile.training = Math.min(10, gameState.directorClubProfile.training + 1);
+    if (type === 'scout') gameState.directorClubProfile.scouting = Math.min(10, gameState.directorClubProfile.scouting + 1);
+    if (type === 'medical') gameState.directorClubProfile.medical = Math.min(10, gameState.directorClubProfile.medical + 1);
+    gameState.directorTransfers.push({ type: 'Mejora de staff', player: staff.name, amount: -cost, season: gameState.directorSeason });
+    gameState.directorMessage = `Mejoraste el ${labels[type]} por ${directorMoney(cost)}.`;
+  }
+  syncDirectorFinance();
+  saveGameState();
+  renderJuego();
+}
+
+function directorChangeTicket(direction) {
+  if (gameState.directorFired) return;
+  const current = Number(gameState.directorTicketPrice || 300);
+  const next = Math.max(100, Math.min(900, current + (direction === 'up' ? 50 : -50)));
+  gameState.directorTicketPrice = next;
+  gameState.directorMessage = `El precio promedio de entrada ahora es ${directorMoney(next)}. La asistencia proyectada se actualizó.`;
+  syncDirectorFinance();
+  saveGameState();
+  renderJuego();
+}
+
+function directorUpgradeMerchandising() {
+  if (gameState.directorFired) return;
+  const cost = 1000000;
+  if (gameState.directorBudget < cost) {
+    gameState.directorMessage = 'No tienes presupuesto para mejorar el merchandising.';
+  } else if (gameState.directorMerchandisingLevel >= 5) {
+    gameState.directorMessage = 'El merchandising ya alcanzó el nivel máximo.';
+  } else {
+    gameState.directorBudget -= cost;
+    gameState.directorMerchandisingLevel += 1;
+    gameState.directorTransfers.push({ type: 'Merchandising', player: `Nivel ${gameState.directorMerchandisingLevel}`, amount: -cost, season: gameState.directorSeason });
+    gameState.directorMessage = `Mejoraste el merchandising al nivel ${gameState.directorMerchandisingLevel}.`;
+  }
+  syncDirectorFinance();
+  saveGameState();
+  renderJuego();
+}
+
+function directorUpgradeInstallation(category) {
+  if (gameState.directorFired) return;
+  const labels = { facilities: 'instalaciones', training: 'centro de entrenamiento', medical: 'departamento médico' };
+  const current = Number(gameState.directorInstallationLevels[category] || 1);
+  if (current >= 10) return;
+  const cost = current * 700000;
+  if (gameState.directorBudget < cost) {
+    gameState.directorMessage = `No tienes presupuesto para mejorar el ${labels[category]}.`;
+  } else {
+    gameState.directorBudget -= cost;
+    gameState.directorInstallationLevels[category] = current + 1;
+    gameState.directorClubProfile[category] = Math.min(10, Number(gameState.directorClubProfile[category] || current) + 1);
+    gameState.directorTransfers.push({ type: 'Instalaciones', player: `${labels[category]} nivel ${current + 1}`, amount: -cost, season: gameState.directorSeason });
+    gameState.directorMessage = `Mejoraste el ${labels[category]} por ${directorMoney(cost)}.`;
   }
   syncDirectorFinance();
   saveGameState();
@@ -358,10 +489,11 @@ async function directorTakeJob(abbreviation) {
 
 function directorSimulateSeason() {
   if (gameState.directorFired) return;
-  const tvIncome = 0;
+  const finance = gameState.directorFinances || {};
   const performanceBonus = randomNumber(0, 3000000) + gameState.directorYouthLevel * 500000;
-  const operatingCost = randomNumber(800000, 2200000);
-  const change = tvIncome + performanceBonus - operatingCost;
+  const operatingCost = Number(finance.projectedExpenses || 0) + randomNumber(800000, 2200000);
+  const seasonIncome = Number(finance.projectedIncome || 0) + performanceBonus;
+  const change = seasonIncome - operatingCost;
   gameState.directorBudget += change;
   const profile = gameState.directorClubProfile || directorClubProfile(getGameTeam(gameState.teamAbbreviation));
   const position = Math.max(1, Math.min(18, randomNumber(3, 18) - Math.round((profile.reputation - 50) / 15) - Math.min(2, gameState.directorYouthLevel)));
@@ -372,6 +504,13 @@ function directorSimulateSeason() {
   gameState.directorSeasonReports.push(report);
   gameState.directorSeason += 1;
   gameState.directorTvDeal = false;
+  gameState.directorRoster.forEach((player) => {
+    if (player.onLoan && player.loanReturnSeason <= gameState.directorSeason) {
+      player.onLoan = false;
+      player.loanClub = '';
+      player.loanReturnSeason = null;
+    }
+  });
   gameState.directorMessage = `Temporada terminada en el lugar ${position}. ${trophies.length ? `Ganaste: ${trophies.join(', ')}.` : 'No ganaste trofeos.'} ${journalistNote}`;
   if (position >= 16 || gameState.directorBudget < 100000) {
     gameState.directorFired = true;
@@ -612,7 +751,7 @@ function renderDirectorDashboard(container) {
   const visibleMarket = market.filter((player) => !query || `${player.name} ${player.teamName} ${player.position}`.toLowerCase().includes(query));
   const marketToRender = visibleMarket.slice(0, 12);
   const history = [...(gameState.directorHistory || [])].reverse();
-  const budgetWarning = gameState.directorBudget < 100000 ? '<div class="director-alert director-alert-danger">La directiva te despidió por bajar de 100 mil dólares.</div>' : gameState.directorBudget < 500000 ? '<div class="director-alert">Advertencia: tienes menos de 500 mil dólares y tu puesto está en riesgo.</div>' : '';
+  const budgetWarning = gameState.directorBudget < 100000 ? '<div class="director-alert director-alert-danger">La directiva te despidió por bajar de 100 mil pesos.</div>' : gameState.directorBudget < 500000 ? '<div class="director-alert">Advertencia: tienes menos de 500 mil pesos y tu puesto está en riesgo.</div>' : '';
   const disabled = gameState.directorFired ? 'disabled' : '';
   container.innerHTML = `
     <div class="director-dashboard-layout">
@@ -626,6 +765,7 @@ function renderDirectorDashboard(container) {
         <div class="director-finance-list"><div><span>Fichajes</span><strong>${directorMoney(finance.transferBudget)}</strong></div><div><span>Salarios</span><strong>${directorMoney(finance.wageBudget)}</strong></div><div><span>Deuda</span><strong>${directorMoney(finance.debt)}</strong></div><div><span>Ingresos previstos</span><strong>${directorMoney(finance.projectedIncome)}</strong></div></div>
         <p class="game-event-note">${gameEscape(gameState.directorMessage)}</p>
         <div class="director-controls"><button class="primary-btn" type="button" data-game-action="director-simulate" ${disabled}>Simular temporada</button><button class="ghost-btn" type="button" data-game-action="director-sponsorship" ${gameState.directorTvDeal || gameState.directorFired ? 'disabled' : ''}>Firmar patrocinio +$4 M</button><button class="ghost-btn" type="button" data-game-action="director-academy" ${disabled}>Invertir cantera -$2 M</button></div>
+        <div class="director-management-grid"><div><strong>Taquilla</strong><span>${directorMoney(gameState.directorTicketPrice)} por entrada</span><div><button class="text-btn" type="button" data-game-action="director-ticket-down" ${disabled}>-$50</button><button class="text-btn" type="button" data-game-action="director-ticket-up" ${disabled}>+$50</button></div></div><div><strong>Merchandising</strong><span>Nivel ${gameState.directorMerchandisingLevel}</span><button class="text-btn" type="button" data-game-action="director-merchandising" ${disabled}>Invertir $1 M</button></div><div><strong>Cuerpo técnico</strong><span>DT ${gameState.directorStaff.coach.level} · Scout ${gameState.directorStaff.scout.level} · Médico ${gameState.directorStaff.medical.level}</span><div><button class="text-btn" type="button" data-game-action="director-hire-staff" data-staff-type="coach" ${disabled}>Mejorar DT</button><button class="text-btn" type="button" data-game-action="director-hire-staff" data-staff-type="scout" ${disabled}>Mejorar scout</button><button class="text-btn" type="button" data-game-action="director-hire-staff" data-staff-type="medical" ${disabled}>Mejorar médico</button></div></div><div><strong>Instalaciones</strong><span>Centro ${gameState.directorInstallationLevels.training} · Médico ${gameState.directorInstallationLevels.medical} · General ${gameState.directorInstallationLevels.facilities}</span><div><button class="text-btn" type="button" data-game-action="director-installation" data-installation="training" ${disabled}>Entrenamiento</button><button class="text-btn" type="button" data-game-action="director-installation" data-installation="medical" ${disabled}>Médico</button><button class="text-btn" type="button" data-game-action="director-installation" data-installation="facilities" ${disabled}>General</button></div></div></div>
         <button class="text-btn" type="button" data-game-action="reset-game">Salir y reiniciar partida</button>
       </article>
       <article class="game-panel surface-card">
@@ -636,7 +776,7 @@ function renderDirectorDashboard(container) {
     </div>
     <div class="director-lower-grid">
       <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">OFERTAS POR TU PLANTILLA</span><h2>Decide si vendes</h2></div></div>${offers.length ? `<div class="director-offer-list">${offers.map((offer) => `<div class="director-market-card"><div><strong>${gameEscape(offer.name)}</strong><small>${gameEscape(offer.buyerTeam)} ofrece ${directorMoney(offer.amount)}</small></div><button class="ghost-btn" type="button" data-game-action="director-sell" data-offer-id="${gameEscape(offer.offerId)}" ${disabled}>Aceptar venta</button></div>`).join('')}</div>` : '<div class="empty-state">Todavía no hay ofertas por tus jugadores.</div>'}</article>
-      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">PLANTILLA ACTUAL</span><h2>Jugadores del club</h2></div><span>${roster.length} registrados</span></div><div class="director-roster-list">${roster.slice(0, 10).map((player) => `<div><strong>${gameEscape(player.name)}</strong><span>${gameEscape(player.position)} · Valor ${directorMoney(player.value)}</span></div>`).join('')}</div>${roster.length > 10 ? `<p class="game-save-note">Se muestran 10 de ${roster.length} jugadores.</p>` : ''}</article>
+      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">PLANTILLA ACTUAL</span><h2>Jugadores del club</h2></div><span>${roster.length} registrados</span></div><div class="director-roster-list">${roster.slice(0, 10).map((player) => `<div><strong>${gameEscape(player.name)}${player.onLoan ? ' · cedido' : ''}</strong><span>${gameEscape(player.position)} · Salario ${directorMoney(player.salary)} · Valor ${directorMoney(player.value)} ${!player.onLoan ? `<button class="text-btn" type="button" data-game-action="director-loan" data-player-key="${gameEscape(player.key)}" ${disabled}>Ceder</button>` : `<small>Regresa T${player.loanReturnSeason}</small>`}</span></div>`).join('')}</div>${roster.length > 10 ? `<p class="game-save-note">Se muestran 10 de ${roster.length} jugadores.</p>` : ''}${gameState.directorLoans?.length ? `<div class="director-loan-list"><strong>Préstamos activos e históricos</strong>${gameState.directorLoans.slice(-5).reverse().map((loan) => `<span>${gameEscape(loan.player)} → ${gameEscape(loan.club)} · ${directorMoney(loan.fee)}</span>`).join('')}</div>` : ''}</article>
     </div>
       <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">HISTORIAL FINANCIERO Y DEPORTIVO</span><h2>Temporadas simuladas</h2></div></div>${history.length ? `<div class="game-history-list">${history.map((item) => `<div class="game-history-row"><strong>Temporada ${item.season}</strong><span>Lugar ${item.position}</span><span>${item.trophies?.length ? item.trophies.map((name) => gameEscape(name)).join(', ') : 'Sin trofeos'}</span><span>${item.change >= 0 ? '+' : ''}${directorMoney(item.change)}</span><small>${gameEscape(item.note || '')}</small></div>`).join('')}</div>` : '<div class="empty-state">Los movimientos y resultados aparecerán aquí.</div>'}</article>
   `;
@@ -695,6 +835,12 @@ document.addEventListener('click', (event) => {
   if (action === 'director-sell') directorSell(button.dataset.offerId);
   if (action === 'director-sponsorship') directorSponsorship();
   if (action === 'director-academy') directorAcademy();
+  if (action === 'director-loan') directorLoanPlayer(button.dataset.playerKey);
+  if (action === 'director-hire-staff') directorHireStaff(button.dataset.staffType);
+  if (action === 'director-ticket-up') directorChangeTicket('up');
+  if (action === 'director-ticket-down') directorChangeTicket('down');
+  if (action === 'director-merchandising') directorUpgradeMerchandising();
+  if (action === 'director-installation') directorUpgradeInstallation(button.dataset.installation);
   if (action === 'director-simulate') directorSimulateSeason();
   if (action === 'director-take-job') directorTakeJob(button.dataset.team);
   if (action === 'reset-game') resetGame();
