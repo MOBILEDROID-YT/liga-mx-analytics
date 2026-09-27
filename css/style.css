@@ -2390,6 +2390,7 @@ select:focus-visible {
 .director-market-grid, .director-offer-list, .director-roster-list { display: grid; gap: 10px; }
 .director-market-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; }
 .director-market-card .primary-btn, .director-market-card .ghost-btn { flex: 0 0 auto; padding: 10px 14px; font-size: .8rem; }
+.director-accept-sale { min-width: 132px; color: var(--navy-strong); box-shadow: 0 3px 0 rgba(160, 111, 12, .18); }
 .director-roster-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e7edf4; }
 .director-roster-list span { color: #6d7d95; font-size: .82rem; text-align: right; }
 .director-market-card button:disabled, .director-controls button:disabled { cursor: not-allowed; opacity: .5; }
@@ -2419,5 +2420,27 @@ select:focus-visible {
 .director-loan-list { display: grid; gap: 5px; margin-top: 15px; padding: 11px; border-radius: 9px; background: var(--surface-soft); color: var(--muted); font-size: .72rem; }
 .director-loan-list strong { color: var(--navy); }
 .director-roster-list .text-btn { display: inline-block; margin-left: 8px; padding: 2px 0; font-size: .68rem; }
+.director-decision-center, .director-news, .director-match-card { margin-bottom: 20px; }
+.director-decision-card { display: grid; gap: 8px; padding: 15px; margin-top: 12px; border-left: 4px solid var(--yellow); border-radius: 10px; background: var(--surface-soft); }
+.director-decision-card p { margin: 0; color: var(--muted); font-size: .82rem; }
+.director-decision-card > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.director-decision-card .primary-btn { padding: 9px 12px; }
+.director-decision-card small { color: var(--muted); font-size: .7rem; }
+.director-news-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e7edf4; font-size: .8rem; }
+.director-news-row strong { color: var(--green-dark); text-transform: uppercase; font-size: .68rem; letter-spacing: .06em; }
+.director-news-row span { color: var(--muted); }
+.director-match-report-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 15px 0; }
+.director-match-report-grid div { display: grid; gap: 4px; padding: 10px; background: var(--surface-soft); border-radius: 8px; }
+.director-match-report-grid span { color: var(--muted); font-size: .66rem; text-transform: uppercase; }
+.director-match-report-grid strong { color: var(--navy); font-size: .82rem; }
+.director-match-card > p { color: var(--muted); font-size: .82rem; }
+.director-negotiation-card { display: grid; gap: 10px; margin: 0 0 14px; padding: 15px; border: 1px solid #f0c55a; border-radius: 12px; background: #fff9df; color: var(--navy); }
+.director-negotiation-card h3 { margin: 4px 0 2px; }
+.director-negotiation-card p { margin: 0; color: var(--muted); font-size: .78rem; }
+.director-negotiation-card label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 800; }
+.director-negotiation-card input { padding: 10px; border: 1px solid #d9c77d; border-radius: 8px; background: #fff; }
+.director-negotiation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.director-negotiation-card .ghost-btn { color: var(--navy); border-color: #b8a45e; }
 @media (max-width: 560px) { .director-job-grid { grid-template-columns: 1fr; } .director-finance-list { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .director-management-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .director-match-report-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .director-news-row { grid-template-columns: 1fr; gap: 4px; } }
