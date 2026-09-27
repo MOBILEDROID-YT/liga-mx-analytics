@@ -2368,8 +2368,32 @@ select:focus-visible {
 .game-history-list { display: grid; gap: 8px; margin-top: 16px; }
 .game-history-row { display: grid; grid-template-columns: .55fr 1.5fr repeat(3, 1fr); gap: 10px; align-items: center; padding: 13px; background: var(--surface-soft); border-radius: 9px; color: var(--muted); font-size: .76rem; }
 .game-history-row strong { color: var(--navy); }
+.player-create-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+.player-create-form label { display: grid; gap: 7px; color: var(--navy); font-size: .76rem; font-weight: 800; }
+.player-create-form input, .player-create-form select { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 10px; color: var(--navy); background: #fff; font: inherit; }
+.player-create-form input:focus, .player-create-form select:focus { outline: 2px solid rgba(244, 190, 55, .55); border-color: var(--yellow); }
+.player-create-wide { grid-column: 1 / -1; }
+.player-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.player-attributes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 15px; }
+.player-attributes-grid > div { position: relative; display: grid; gap: 4px; padding: 11px; overflow: hidden; border-radius: 9px; background: var(--surface-soft); }
+.player-attributes-grid span { color: var(--muted); font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+.player-attributes-grid strong { color: var(--navy); font-size: 1.05rem; }
+.player-attributes-grid i { display: block; height: 4px; border-radius: 999px; background: var(--green); }
+.player-detail-list, .player-career-facts, .player-news-list { display: grid; gap: 7px; margin: 14px 0; color: var(--muted); font-size: .76rem; line-height: 1.4; }
+.player-detail-list strong, .player-career-facts strong { color: var(--navy); }
+.player-status-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+.player-status-strip span { padding: 7px 9px; border-radius: 999px; color: var(--green-dark); background: #ecf9f2; font-size: .7rem; font-weight: 800; }
+.player-match-panel { display: grid; gap: 8px; margin-top: 15px; padding: 14px; border-left: 3px solid var(--yellow); border-radius: 9px; background: var(--surface-soft); color: var(--muted); font-size: .78rem; }
+.player-match-panel strong { color: var(--navy); }
+.player-match-panel button { width: max-content; }
+.player-match-report { display: grid; gap: 4px; margin: 12px 0; padding: 11px; border-radius: 9px; background: var(--surface-soft); color: var(--muted); font-size: .76rem; }
+.player-match-report strong { color: var(--navy); font-size: 1rem; }
+.player-news-list { padding-top: 12px; border-top: 1px solid var(--line); }
+.player-news-list strong { color: var(--green-dark); text-transform: uppercase; font-size: .65rem; }
 @media (max-width: 760px) {
   .game-role-grid, .game-team-options, .game-action-grid, .game-career-layout { grid-template-columns: 1fr; }
+  .player-create-form, .player-dashboard-grid { grid-template-columns: 1fr; }
+  .player-create-wide { grid-column: auto; }
   .game-panel-heading { flex-direction: column; }
   .game-history-row { grid-template-columns: 1fr 1fr; }
 }

@@ -32,9 +32,53 @@ function defaultGameState() {
   return {
     mode: '',
     phase: 'intro',
-    age: 18,
+    age: 16,
     teamAbbreviation: '',
     skill: 60,
+    playerName: '',
+    playerNationality: '',
+    playerPosition: '',
+    playerFoot: 'Derecho',
+    playerProfile: '',
+    playerStage: 'academy',
+    playerRole: 'Canterano',
+    playerAttributes: {
+      tecnica: 55,
+      pase: 55,
+      regate: 55,
+      velocidad: 55,
+      tiro: 55,
+      defensa: 55,
+      fisico: 55,
+      vision: 55,
+      resistencia: 55,
+      mentalidad: 55
+    },
+    playerHidden: {
+      potential: 75,
+      professionalism: 60,
+      discipline: 70,
+      consistency: 60,
+      personality: 60
+    },
+    playerCoachTrust: 45,
+    playerPopularity: 8,
+    playerFanRelation: 15,
+    playerMorale: 75,
+    playerFitness: 90,
+    playerFatigue: 0,
+    playerForm: 60,
+    playerCurrentMatch: null,
+    playerSeasonStats: { appearances: 0, starts: 0, goals: 0, assists: 0, minutes: 0, cards: 0 },
+    playerClubs: [],
+    playerNews: [],
+    playerBigMoments: [],
+    playerDecisions: [],
+    playerRelations: [],
+    playerAgent: { name: 'Agente por conocer', reputation: 25, commission: 5 },
+    playerContract: null,
+    playerMarketValue: 0,
+    playerSuspendedYears: 0,
     careerGoals: 0,
     careerAssists: 0,
     careerTitles: 0,
@@ -106,6 +150,10 @@ function loadGameState() {
   try {
     const savedState = JSON.parse(localStorage.getItem(gameStorageKey) || 'null');
     const state = savedState ? { ...defaultGameState(), ...savedState } : defaultGameState();
+    state.playerAttributes = { ...defaultGameState().playerAttributes, ...(state.playerAttributes || {}) };
+    state.playerHidden = { ...defaultGameState().playerHidden, ...(state.playerHidden || {}) };
+    state.playerSeasonStats = { ...defaultGameState().playerSeasonStats, ...(state.playerSeasonStats || {}) };
+    state.playerAgent = { ...defaultGameState().playerAgent, ...(state.playerAgent || {}) };
     if (state.mode === 'player' && state.phase === 'career' && !state.actionUsed && state.seasonOptions.length < 6) state.seasonOptions = drawSeasonOptions();
     return state;
   } catch {
@@ -809,24 +857,163 @@ function directorSimulateSeason() {
   renderJuego();
 }
 
+function playerClamp(value, minimum = 1, maximum = 99) {
+  return Math.max(minimum, Math.min(maximum, Math.round(Number(value) || 0)));
+}
+
+function playerAttributeAverage() {
+  const attributes = Object.values(gameState.playerAttributes || {});
+  return attributes.length ? Math.round(attributes.reduce((sum, value) => sum + Number(value || 0), 0) / attributes.length) : Number(gameState.skill || 1);
+}
+
+function playerRecalculateSkill() {
+  gameState.skill = playerClamp(playerAttributeAverage());
+  gameState.playerMarketValue = Math.round(Math.max(10000, gameState.skill * 25000 + Number(gameState.age || 16) * 15000));
+}
+
+function playerAdjustAttributes(changes) {
+  Object.entries(changes).forEach(([attribute, amount]) => {
+    if (Object.prototype.hasOwnProperty.call(gameState.playerAttributes, attribute)) gameState.playerAttributes[attribute] = playerClamp(gameState.playerAttributes[attribute] + amount);
+  });
+  playerRecalculateSkill();
+}
+
+function playerAdjustOverall(amount) {
+  const attributes = Object.keys(gameState.playerAttributes || {});
+  attributes.forEach((attribute) => { gameState.playerAttributes[attribute] = playerClamp(gameState.playerAttributes[attribute] + amount); });
+  playerRecalculateSkill();
+}
+
+function playerStageLabel() {
+  return ({ academy: 'Fuerzas básicas', loan: 'Cedido', bench: 'Primer equipo · suplente', firstTeam: 'Primer equipo · titular' })[gameState.playerStage] || 'Canterano';
+}
+
+function playerProfileLabel() {
+  return ({ creative: 'Creador', finisher: 'Finalizador', defensive: 'Defensivo', speedster: 'Extremo veloz', boxToBox: 'Todoterreno' })[gameState.playerProfile] || 'En formación';
+}
+
+function playerAddNews(text, category = 'Carrera') {
+  gameState.playerNews = [{ id: `${Date.now()}-${Math.random()}`, age: gameState.age, category, text }, ...(gameState.playerNews || [])].slice(0, 12);
+}
+
+function playerTransferToRandomTeam(note) {
+  const newTeam = shuffle(gameTeams().filter((item) => item.abreviatura !== gameState.teamAbbreviation))[0];
+  if (!newTeam) return;
+  gameState.teamAbbreviation = newTeam.abreviatura;
+  gameState.playerClubs = [...new Set([...(gameState.playerClubs || []), newTeam.nombre])];
+  gameState.currentSeasonNote = `${note} Ahora estás con ${newTeam.nombre}.`;
+  playerAddNews(gameState.currentSeasonNote, 'Mercado');
+}
+
+function playerNextMatch() {
+  const team = getGameTeam(gameState.teamAbbreviation);
+  if (!team || typeof appState === 'undefined') return null;
+  const normalize = (value) => String(value || '').toLowerCase().replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  const teamName = normalize(team.nombre);
+  return (appState.matches || []).find((match) => {
+    const status = normalize(match.estado);
+    if (status.includes('finaliz') || status.includes('termin')) return false;
+    return [match.local, match.visitante].some((name) => normalize(name).includes(teamName) || teamName.includes(normalize(name)));
+  }) || null;
+}
+
+function playerPositionOptions() {
+  return ['Portero', 'Defensa central', 'Lateral', 'Mediocampista', 'Extremo', 'Delantero'];
+}
+
+function playerProfileOptions() {
+  return [
+    { id: 'creative', label: 'Creador', text: 'Pase, visión y regate.' },
+    { id: 'finisher', label: 'Finalizador', text: 'Tiro, velocidad y movimientos ofensivos.' },
+    { id: 'defensive', label: 'Defensivo', text: 'Defensa, físico y disciplina táctica.' },
+    { id: 'speedster', label: 'Extremo veloz', text: 'Velocidad, regate y resistencia.' },
+    { id: 'boxToBox', label: 'Todoterreno', text: 'Equilibrio entre ataque, defensa y resistencia.' }
+  ];
+}
+
+function playerBuildAttributes(position, profile) {
+  const keys = ['tecnica', 'pase', 'regate', 'velocidad', 'tiro', 'defensa', 'fisico', 'vision', 'resistencia', 'mentalidad'];
+  const attributes = Object.fromEntries(keys.map((key) => [key, randomNumber(47, 62)]));
+  const modifiers = {
+    creative: { pase: 8, vision: 8, regate: 5 },
+    finisher: { tiro: 9, velocidad: 5, tecnica: 4 },
+    defensive: { defensa: 9, fisico: 6, mentalidad: 5 },
+    speedster: { velocidad: 9, regate: 7, resistencia: 5 },
+    boxToBox: { resistencia: 8, fisico: 5, pase: 4 }
+  };
+  const positionModifiers = {
+    Portero: { defensa: 8, mentalidad: 5, tecnica: 3 },
+    'Defensa central': { defensa: 8, fisico: 6, mentalidad: 3 },
+    Lateral: { defensa: 5, velocidad: 5, resistencia: 4 },
+    Mediocampista: { pase: 5, vision: 5, resistencia: 4 },
+    Extremo: { velocidad: 6, regate: 6, tiro: 3 },
+    Delantero: { tiro: 8, tecnica: 5, velocidad: 4 }
+  };
+  [modifiers[profile] || {}, positionModifiers[position] || {}].forEach((group) => Object.entries(group).forEach(([key, amount]) => { attributes[key] += amount; }));
+  return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, playerClamp(value)]));
+}
+
 function drawSeasonOptions() {
-  const footballOptions = shuffle([
-    { id: 'training', icon: '💪', title: 'Entrenar fuerte', text: 'Aumentas tu nivel, pero existe riesgo de lesión.' },
-    { id: 'technique', icon: '🎯', title: 'Perfeccionar tu técnica', text: 'Mejoras tu rendimiento ofensivo de forma segura.' },
-    { id: 'transfer', icon: '🔁', title: 'Buscar otro equipo', text: 'Exploras una oportunidad diferente dentro de la Liga MX.' },
-    { id: 'rest', icon: '🛌', title: 'Cuidar tu recuperación', text: 'Avanzas con una mejora pequeña y reduces el desgaste.' },
-    { id: 'prohibited', icon: '⚠️', title: 'Usar una sustancia prohibida', text: 'Es una decisión ficticia de alto riesgo: puedes mejorar o recibir suspensión.' }
-  ]).slice(0, 3);
-  return footballOptions.concat([
-    { id: 'family-stay', icon: '🏠', title: 'Quedarte por el proyecto', text: 'Tu familia no está a gusto, pero decides continuar: tu media baja 4 puntos.' },
-    { id: 'family-transfer', icon: '🚗', title: 'Salir por tu familia', text: 'Pides cambiar de equipo y mantienes tu media actual.' },
-    { id: 'family-loan', icon: '🤝', title: 'Buscar una cesión familiar', text: 'Negocias una cesión a otro club y mantienes tu media actual.' }
+  const senior = gameState.age >= 18 && gameState.playerStage !== 'academy';
+  const mainOptions = senior ? [
+    { id: 'training', icon: '💪', title: 'Entrenar fuerte', text: 'Subes atributos, pero existe riesgo de lesión.' },
+    { id: 'technique', icon: '🎯', title: 'Perfeccionar tu técnica', text: 'Mejoras técnica, pase y regate.' },
+    { id: 'physical', icon: '🏋️', title: 'Trabajar el físico', text: 'Ganas velocidad y resistencia con riesgo moderado.' },
+    { id: 'relation-coach', icon: '🗣️', title: 'Hablar con el entrenador', text: 'Buscas más confianza y minutos.' },
+    { id: 'agent', icon: '📞', title: 'Reunirte con tu representante', text: 'Mejoras tus opciones de contrato o transferencia.' },
+    { id: 'prohibited', icon: '⚠️', title: 'Usar una sustancia prohibida', text: 'Decisión ficticia de alto riesgo: puedes mejorar o recibir un año de suspensión.' },
+    { id: 'rest', icon: '🛌', title: 'Cuidar tu recuperación', text: 'Reduces fatiga y proteges tu estado físico.' },
+    { id: 'transfer', icon: '🔁', title: 'Buscar otro equipo', text: 'Exploras una oportunidad diferente dentro de la liga.' }
+  ] : [
+    { id: 'academy-train', icon: '⚽', title: 'Entrenar con la academia', text: 'Mejoras tus fundamentos y llamas la atención del club.' },
+    { id: 'academy-tournament', icon: '🏆', title: 'Jugar torneo juvenil', text: 'Buscas destacar y sumar experiencia competitiva.' },
+    { id: 'academy-study', icon: '📚', title: 'Estudiar táctica', text: 'Mejoras visión, mentalidad y disciplina.' },
+    { id: 'relation-coach', icon: '🗣️', title: 'Hablar con el entrenador', text: 'Construyes confianza dentro de las fuerzas básicas.' },
+    { id: 'rest', icon: '🛌', title: 'Cuidar tu recuperación', text: 'Reduces fatiga y proteges tu desarrollo.' },
+    { id: 'transfer', icon: '🔁', title: 'Buscar otra academia', text: 'Exploras un proyecto juvenil distinto.' }
+  ];
+  return shuffle(mainOptions).slice(0, 3).concat([
+    { id: 'family-stay', icon: '🏠', title: 'Quedarte por el proyecto', text: 'Tu familia no está a gusto, pero continúas: tu media baja 4 puntos.' },
+    { id: 'family-transfer', icon: '🚗', title: 'Salir por tu familia', text: 'Cambias de equipo y tu media se mantiene.' },
+    { id: 'family-loan', icon: '🤝', title: 'Buscar una cesión familiar', text: 'Buscas una cesión y mantienes tu media actual.' }
   ]);
 }
 
 function startPlayerMode() {
+  gameState = { ...defaultGameState(), mode: 'player', phase: 'player-create' };
+  saveGameState();
+  renderJuego();
+}
+
+function createPlayerProfile(data) {
+  const name = String(data.name || '').trim();
+  const nationality = String(data.nationality || '').trim();
+  const validLetters = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/;
+  if (name.length < 2 || nationality.length < 2 || !validLetters.test(name) || !validLetters.test(nationality)) {
+    gameState.currentSeasonNote = 'Escribe nombre y nacionalidad usando únicamente letras y espacios.';
+    saveGameState();
+    renderJuego();
+    return;
+  }
+  const position = playerPositionOptions().includes(data.position) ? data.position : 'Mediocampista';
+  const profile = playerProfileOptions().some((item) => item.id === data.profile) ? data.profile : 'boxToBox';
+  const attributes = playerBuildAttributes(position, profile);
   const teams = shuffle(gameTeams()).slice(0, 3);
-  gameState = { ...defaultGameState(), mode: 'player', phase: 'offers', startOptions: teams.map((team) => team.abreviatura) };
+  gameState = {
+    ...defaultGameState(),
+    mode: 'player',
+    phase: 'offers',
+    playerName: name,
+    playerNationality: nationality,
+    playerPosition: position,
+    playerFoot: data.foot === 'Izquierdo' ? 'Izquierdo' : 'Derecho',
+    playerProfile: profile,
+    playerAttributes: attributes,
+    playerHidden: { potential: randomNumber(72, 96), professionalism: randomNumber(45, 85), discipline: randomNumber(50, 90), consistency: randomNumber(45, 82), personality: randomNumber(45, 85) },
+    startOptions: teams.map((team) => team.abreviatura),
+    currentSeasonNote: `${name} tiene 16 años y busca su primera oportunidad en una academia.`
+  };
+  playerRecalculateSkill();
   saveGameState();
   renderJuego();
 }
@@ -835,114 +1022,132 @@ function selectStartingTeam(abbreviation) {
   const team = getGameTeam(abbreviation);
   if (!team) return;
   gameState.teamAbbreviation = team.abreviatura;
+  gameState.playerStage = 'academy';
+  gameState.playerRole = 'Canterano';
+  gameState.playerClubs = [team.nombre];
   gameState.phase = 'career';
   gameState.seasonOptions = drawSeasonOptions();
-  gameState.currentSeasonNote = `Comienzas tu carrera con ${team.nombre} a los 18 años.`;
+  gameState.currentSeasonNote = `Comienzas tu formación con ${team.nombre} a los 16 años. Todavía perteneces a las fuerzas básicas.`;
+  playerAddNews(gameState.currentSeasonNote, 'Academia');
   saveGameState();
   renderJuego();
 }
 
+function playerApplyInjury() {
+  gameState.injured = true;
+  gameState.injuries += 1;
+  gameState.playerFitness = Math.max(35, gameState.playerFitness - 20);
+  gameState.playerCoachTrust = Math.max(0, gameState.playerCoachTrust - 2);
+  playerAdjustOverall(-1);
+}
+
 function performSeasonAction(actionId) {
   if (gameState.actionUsed || gameState.phase !== 'career') return;
-  const team = getGameTeam(gameState.teamAbbreviation);
-  if (!team) return;
-
+  if (!getGameTeam(gameState.teamAbbreviation)) return;
   gameState.actionUsed = true;
   gameState.injured = false;
   gameState.suspended = false;
+  gameState.playerCurrentMatch = null;
+  gameState.playerFatigue = Math.min(100, gameState.playerFatigue + 8);
 
-  if (actionId === 'training') {
-    gameState.skill += randomNumber(4, 8);
-    if (Math.random() < 0.2) {
-      gameState.injured = true;
-      gameState.injuries += 1;
-      gameState.skill -= 1;
-      gameState.currentSeasonNote = 'Entrenaste fuerte, pero sufriste una lesión que redujo tu temporada.';
-    } else {
-      gameState.currentSeasonNote = 'El entrenamiento elevó tu nivel y ganaste la confianza del cuerpo técnico.';
-    }
-  }
-
-  if (actionId === 'technique') {
-    gameState.skill += randomNumber(2, 5);
-    gameState.currentSeasonNote = 'Tu técnica mejoró y generaste más oportunidades de gol.';
-  }
-
-  if (actionId === 'transfer') {
-    const otherTeams = gameTeams().filter((item) => item.abreviatura !== gameState.teamAbbreviation);
-    const newTeam = shuffle(otherTeams)[0];
-    if (newTeam) {
-      gameState.teamAbbreviation = newTeam.abreviatura;
-      gameState.currentSeasonNote = `Aceptaste una oportunidad y ahora juegas para ${newTeam.nombre}.`;
-    }
-  }
-
-  if (actionId === 'family-stay') {
-    gameState.skill -= 4;
-    gameState.currentSeasonNote = 'Tu familia no se siente cómoda en la ciudad, pero decidiste quedarte por el proyecto. Tu media bajó 4 puntos.';
-  }
-
-  if (actionId === 'family-transfer' || actionId === 'family-loan') {
-    const otherTeams = gameTeams().filter((item) => item.abreviatura !== gameState.teamAbbreviation);
-    const newTeam = shuffle(otherTeams)[0];
-    if (newTeam) {
-      gameState.teamAbbreviation = newTeam.abreviatura;
-      gameState.currentSeasonNote = actionId === 'family-transfer'
-        ? `Saliste del equipo para cuidar a tu familia y ahora juegas para ${newTeam.nombre}. Tu media se mantiene.`
-        : `Acordaste una cesión para cuidar a tu familia y jugarás para ${newTeam.nombre}. Tu media se mantiene.`;
-    }
-  }
-
-  if (actionId === 'rest') {
-    gameState.skill += 1;
-    gameState.currentSeasonNote = 'Cuidaste tu recuperación y llegaste en mejores condiciones al cierre de temporada.';
-  }
-
+  if (actionId === 'academy-train') { playerAdjustAttributes({ tecnica: 3, pase: 2, mentalidad: 1 }); gameState.playerCoachTrust += 5; gameState.currentSeasonNote = 'El trabajo en la academia mejoró tus fundamentos y el entrenador comenzó a seguirte de cerca.'; }
+  if (actionId === 'academy-tournament') { playerAdjustAttributes({ tecnica: 2, tiro: 2, mentalidad: 3 }); gameState.playerCoachTrust += 8; gameState.playerPopularity += 4; gameState.currentSeasonNote = 'Destacaste en un torneo juvenil y varios visores anotaron tu nombre.'; }
+  if (actionId === 'academy-study') { playerAdjustAttributes({ vision: 3, mentalidad: 3, pase: 1 }); gameState.playerHidden.professionalism += 4; gameState.currentSeasonNote = 'Estudiaste táctica y comprendiste mejor tus responsabilidades dentro del campo.'; }
+  if (actionId === 'training') { playerAdjustAttributes({ fisico: 3, resistencia: 3, mentalidad: 2 }); if (Math.random() < .2) { playerApplyInjury(); gameState.currentSeasonNote = 'Entrenaste fuerte, pero sufriste una lesión. Tu media baja 1 punto y perderás ritmo.'; } else gameState.currentSeasonNote = 'El entrenamiento elevó tu nivel y ganaste la confianza del cuerpo técnico.'; }
+  if (actionId === 'technique') { playerAdjustAttributes({ tecnica: 3, pase: 3, regate: 2 }); gameState.currentSeasonNote = 'Tu técnica mejoró y generaste más oportunidades para el equipo.'; }
+  if (actionId === 'physical') { playerAdjustAttributes({ velocidad: 3, resistencia: 3, fisico: 2 }); if (Math.random() < .15) { playerApplyInjury(); gameState.currentSeasonNote = 'El trabajo físico dio resultados, aunque una lesión te quitó parte del año.'; } else gameState.currentSeasonNote = 'Tu potencia física y resistencia mejoraron de manera visible.'; }
+  if (actionId === 'relation-coach') { gameState.playerCoachTrust = Math.min(100, gameState.playerCoachTrust + 12); gameState.playerMorale = Math.min(100, gameState.playerMorale + 4); gameState.currentSeasonNote = 'Hablaste con el entrenador, entendiste su plan y ganaste confianza.'; }
+  if (actionId === 'agent') { gameState.playerAgent = { ...gameState.playerAgent, reputation: Math.min(100, gameState.playerAgent.reputation + 8) }; gameState.playerCurrentMatch = null; gameState.currentSeasonNote = 'Tu representante comenzó a explorar contratos, préstamos y oportunidades de mercado.'; }
+  if (actionId === 'rest') { gameState.playerFatigue = Math.max(0, gameState.playerFatigue - 25); gameState.playerFitness = Math.min(100, gameState.playerFitness + 8); gameState.playerMorale = Math.min(100, gameState.playerMorale + 3); gameState.currentSeasonNote = 'Priorizaste la recuperación y llegaste con mejor estado físico al cierre del año.'; }
+  if (actionId === 'transfer') playerTransferToRandomTeam('Aceptaste una oportunidad en otro proyecto');
+  if (actionId === 'family-stay') { playerAdjustOverall(-4); gameState.playerMorale = Math.max(0, gameState.playerMorale - 12); gameState.currentSeasonNote = 'Tu familia no se siente cómoda en la ciudad, pero decidiste quedarte. Tu media bajó 4 puntos.'; }
+  if (actionId === 'family-transfer') { playerTransferToRandomTeam('Saliste del equipo para cuidar a tu familia. Tu media se mantiene.'); gameState.playerMorale = Math.min(100, gameState.playerMorale + 5); }
+  if (actionId === 'family-loan') { gameState.playerStage = 'loan'; playerTransferToRandomTeam('Acordaste una cesión para cuidar a tu familia. Tu media se mantiene.'); }
   if (actionId === 'prohibited') {
-    if (Math.random() < 0.25) {
-      gameState.suspended = true;
-      gameState.skill -= 6;
-      gameState.currentSeasonNote = 'La sustancia falló en el control ficticio del juego y recibiste una suspensión de un año.';
-    } else {
-      gameState.skill += 8;
-      gameState.currentSeasonNote = 'Tu rendimiento subió temporalmente, pero quedaste bajo observación.';
-    }
+    if (Math.random() < .25) { gameState.suspended = true; gameState.playerSuspendedYears = 1; gameState.playerCoachTrust = Math.max(0, gameState.playerCoachTrust - 18); playerAdjustOverall(-6); gameState.currentSeasonNote = 'Fallaste un control ficticio y recibiste una suspensión de un año. Tu media bajó 6 puntos.'; playerAddNews(gameState.currentSeasonNote, 'Disciplina'); }
+    else { playerAdjustOverall(8); gameState.playerHidden.discipline = Math.max(0, gameState.playerHidden.discipline - 10); gameState.currentSeasonNote = 'Tu rendimiento subió temporalmente, pero quedaste bajo observación disciplinaria.'; }
   }
-
-  gameState.skill = Math.max(1, Math.min(99, gameState.skill));
+  gameState.playerCoachTrust = playerClamp(gameState.playerCoachTrust, 0, 100);
+  gameState.playerPopularity = playerClamp(gameState.playerPopularity, 0, 100);
+  gameState.playerMorale = playerClamp(gameState.playerMorale, 0, 100);
+  playerRecalculateSkill();
+  playerAddNews(gameState.currentSeasonNote);
   saveGameState();
   renderJuego();
+}
+
+function playerSimulateMatch() {
+  if (gameState.phase !== 'career' || gameState.age < 18 || gameState.actionUsed || gameState.playerStage === 'academy') return;
+  const team = getGameTeam(gameState.teamAbbreviation);
+  const match = playerNextMatch();
+  const opponent = match ? ([match.local, match.visitante].find((name) => String(name).toLowerCase().includes(String(team?.nombre || '').toLowerCase()) === false) || 'Rival de liga') : 'Rival de preparación';
+  const strength = gameState.skill + gameState.playerForm * .25 + gameState.playerCoachTrust * .15 + randomNumber(-12, 12);
+  const result = strength > 76 ? 'Victoria' : strength > 62 ? 'Empate' : 'Derrota';
+  const goals = result === 'Victoria' ? randomNumber(1, 3) : result === 'Empate' ? randomNumber(0, 1) : 0;
+  const assists = gameState.playerPosition === 'Delantero' ? randomNumber(0, 1) : randomNumber(0, 2);
+  const score = result === 'Victoria' ? `${goals}-${randomNumber(0, Math.max(0, goals - 1))}` : result === 'Empate' ? `${goals}-${goals}` : `0-${randomNumber(1, 3)}`;
+  gameState.actionUsed = true;
+  gameState.playerSeasonStats.appearances += 1;
+  gameState.playerSeasonStats.starts += gameState.playerStage === 'firstTeam' ? 1 : 0;
+  gameState.playerSeasonStats.goals += goals;
+  gameState.playerSeasonStats.assists += assists;
+  gameState.playerSeasonStats.minutes += randomNumber(35, 90);
+  gameState.playerCurrentMatch = { opponent, score, result, goals, assists, minutes: gameState.playerSeasonStats.minutes, report: `Participaste como ${gameState.playerStage === 'firstTeam' ? 'titular' : 'suplente'} y dejaste buenas sensaciones.` };
+  gameState.playerCoachTrust = playerClamp(gameState.playerCoachTrust + (result === 'Victoria' ? 5 : result === 'Empate' ? 2 : -2), 0, 100);
+  gameState.playerPopularity = playerClamp(gameState.playerPopularity + (goals + assists) * 3 + (result === 'Victoria' ? 2 : 0), 0, 100);
+  gameState.currentSeasonNote = `Informe: ${team?.nombre || 'Tu equipo'} ${score} ${opponent}. ${goals ? `Participaste en ${goals} gol${goals === 1 ? '' : 'es'}.` : 'Trabajaste para el equipo.'}`;
+  playerAddNews(gameState.currentSeasonNote, 'Partido');
+  saveGameState();
+  renderJuego();
+}
+
+function playerEvaluatePromotion() {
+  const score = gameState.skill * .55 + gameState.playerCoachTrust * .2 + gameState.playerHidden.professionalism * .15 + gameState.playerHidden.consistency * .1 + randomNumber(-8, 8);
+  if (score >= 74) { gameState.playerStage = 'firstTeam'; gameState.playerRole = 'Titular'; gameState.currentSeasonNote = 'El club te promovió al primer equipo como una de sus grandes promesas.'; }
+  else if (score >= 63) { gameState.playerStage = 'bench'; gameState.playerRole = 'Suplente'; gameState.currentSeasonNote = 'Te promovieron al primer equipo, aunque tendrás que luchar por minutos.'; }
+  else if (score >= 51) { gameState.playerStage = 'loan'; gameState.playerRole = 'Cedido'; playerTransferToRandomTeam('El club decidió cederte para que sumes experiencia'); }
+  else { gameState.playerStage = 'academy'; gameState.playerRole = 'Canterano'; gameState.currentSeasonNote = 'Continuarás un año más en fuerzas básicas para completar tu formación.'; }
+  gameState.playerContract = { salary: Math.round(gameState.skill * 6500), years: 3, type: gameState.playerStage === 'academy' ? 'Formativo' : 'Primer contrato profesional' };
+  playerAddNews(gameState.currentSeasonNote, 'Promoción');
 }
 
 function finishSeason() {
   if (!gameState.actionUsed || gameState.phase !== 'career') return;
   const team = getGameTeam(gameState.teamAbbreviation);
   if (!team) return;
-
-  const performance = Math.max(1, Math.round((gameState.skill - 42) / 8) + randomNumber(1, 5));
-  const goals = gameState.suspended ? 0 : Math.max(0, gameState.injured ? Math.floor(performance / 2) : performance);
-  const assists = gameState.suspended ? 0 : Math.max(0, gameState.injured ? Math.floor(performance / 2) : randomNumber(1, performance + 3));
-  const trophies = drawPlayerTrophies(gameState.skill, gameState.suspended);
+  const performance = Math.max(0, Math.round((gameState.skill - 42) / 8) + randomNumber(0, 4));
+  const generatedGoals = gameState.age < 18 || gameState.suspended || gameState.playerStage === 'academy' ? randomNumber(0, Math.min(3, performance)) : performance;
+  const generatedAssists = gameState.age < 18 || gameState.suspended || gameState.playerStage === 'academy' ? randomNumber(0, 3) : randomNumber(1, Math.max(2, performance + 2));
+  const goals = gameState.playerSeasonStats.goals || (gameState.injured ? Math.floor(generatedGoals / 2) : generatedGoals);
+  const assists = gameState.playerSeasonStats.assists || (gameState.injured ? Math.floor(generatedAssists / 2) : generatedAssists);
+  const trophies = drawPlayerTrophies(gameState.skill, gameState.suspended || gameState.age < 18 || gameState.playerStage === 'academy');
   const titles = trophies.length;
-
-  gameState.history.push({ age: gameState.age, team: team.nombre, goals, assists, titles, trophies });
+  const seasonStats = { ...gameState.playerSeasonStats, goals, assists, appearances: gameState.playerSeasonStats.appearances || (gameState.age >= 18 && gameState.playerStage !== 'academy' ? randomNumber(4, 18) : randomNumber(2, 8)) };
+  gameState.history.push({ age: gameState.age, team: team.nombre, stage: playerStageLabel(), goals, assists, titles, trophies, stats: seasonStats });
   gameState.careerGoals += goals;
   gameState.careerAssists += assists;
   gameState.careerTitles += titles;
   gameState.careerTournaments = [...(gameState.careerTournaments || []), ...trophies.map((name) => ({ age: gameState.age, name }))];
+  gameState.playerBigMoments = [...(gameState.playerBigMoments || []), ...trophies.map((name) => `${gameState.age} años: ganaste ${name}`)].slice(-20);
+  playerAddNews(`${gameState.age} años: ${goals} goles, ${assists} asistencias y ${titles} títulos con ${team.nombre}.`, 'Temporada');
 
   if (gameState.age >= 40) {
     gameState.phase = 'finished';
-    gameState.currentSeasonNote = `Terminaste tu carrera con ${gameState.careerGoals} goles, ${gameState.careerAssists} asistencias y ${gameState.careerTitles} títulos.`;
+    gameState.currentSeasonNote = `Te retiraste a los 40 años con ${gameState.careerGoals} goles, ${gameState.careerAssists} asistencias y ${gameState.careerTitles} títulos.`;
   } else {
+    const previousAge = gameState.age;
     gameState.age += 1;
     gameState.actionUsed = false;
     gameState.injured = false;
     gameState.suspended = false;
+    gameState.playerSuspendedYears = 0;
+    gameState.playerCurrentMatch = null;
+    gameState.playerSeasonStats = { appearances: 0, starts: 0, goals: 0, assists: 0, minutes: 0, cards: 0 };
+    gameState.playerFatigue = Math.max(0, gameState.playerFatigue - 12);
+    if (previousAge === 17) playerEvaluatePromotion();
+    else gameState.currentSeasonNote = `Comienza tu temporada a los ${gameState.age} años como ${playerStageLabel().toLowerCase()}.`;
     gameState.seasonOptions = drawSeasonOptions();
-    gameState.currentSeasonNote = `Comienza tu temporada a los ${gameState.age} años.`;
   }
-
   saveGameState();
   renderJuego();
 }
@@ -961,7 +1166,7 @@ function renderGameIntro(container) {
       <p>Empieza una partida y toma decisiones que cambiarán tu historia.</p>
       <div class="game-role-grid">
         <button class="game-role-card" type="button" data-game-action="start-player">
-          <span class="game-role-icon">⚽</span><strong>Jugador</strong><small>Construye una carrera de los 18 a los 40 años.</small>
+          <span class="game-role-icon">⚽</span><strong>Jugador</strong><small>Crea un futbolista y construye una carrera de los 16 a los 40 años.</small>
         </button>
         <button class="game-role-card" type="button" data-game-action="start-director">
           <span class="game-role-icon">📋</span><strong>Director deportivo</strong><small>Fichajes, presupuesto y decisiones del club.</small><em>Jugar ahora</em>
@@ -971,14 +1176,33 @@ function renderGameIntro(container) {
   `;
 }
 
+function renderPlayerCreate(container) {
+  const positions = playerPositionOptions();
+  const profiles = playerProfileOptions();
+  container.innerHTML = `
+    <article class="game-panel surface-card player-create-panel">
+      <div class="game-panel-heading"><div><span class="eyebrow">CREA TU FUTBOLISTA</span><h2>Tu carrera comienza en la academia</h2></div><span class="game-season-badge">16 AÑOS</span></div>
+      <p>Escribe únicamente letras. El jugador será ficticio y comenzará su historia en las fuerzas básicas.</p>
+      <form class="player-create-form" data-game-form="player-create">
+        <label>Nombre del jugador<input name="name" type="text" minlength="2" maxlength="40" pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" autocomplete="off" required placeholder="Ej. Diego Hernández"></label>
+        <label>Nacionalidad<input name="nationality" type="text" minlength="2" maxlength="30" pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+" autocomplete="off" required placeholder="Ej. Mexicana"></label>
+        <label>Posición<select name="position">${positions.map((position) => `<option value="${gameEscape(position)}">${gameEscape(position)}</option>`).join('')}</select></label>
+        <label>Pie dominante<select name="foot"><option>Derecho</option><option>Izquierdo</option></select></label>
+        <label class="player-create-wide">Perfil<select name="profile">${profiles.map((profile) => `<option value="${gameEscape(profile.id)}">${gameEscape(profile.label)} · ${gameEscape(profile.text)}</option>`).join('')}</select></label>
+        <button class="primary-btn player-create-wide" type="submit">Crear jugador y ver ofertas</button>
+      </form>
+    </article>
+  `;
+}
+
 function renderPlayerOffers(container) {
   const options = gameState.startOptions.map(getGameTeam).filter(Boolean);
   container.innerHTML = `
     <article class="game-panel surface-card">
-      <div class="game-panel-heading"><div><span class="eyebrow">PRIMER CONTRATO</span><h2>Elige dónde comenzar</h2></div><span class="game-season-badge">18 AÑOS</span></div>
-      <p>Estos son tres equipos aleatorios que te ofrecen iniciar tu carrera.</p>
-      <div class="game-team-options">${options.map((team) => `<button class="game-team-option" type="button" data-game-action="select-team" data-team="${gameEscape(team.abreviatura)}"><strong>${gameEscape(team.nombre)}</strong><small>Contrato de desarrollo · Temporada 1</small><span>Elegir equipo →</span></button>`).join('')}</div>
-      <button class="text-btn" type="button" data-game-action="start-player">Volver a sortear opciones</button>
+      <div class="game-panel-heading"><div><span class="eyebrow">PRIMERA OPORTUNIDAD</span><h2>${gameEscape(gameState.playerName)}</h2></div><span class="game-season-badge">16 AÑOS</span></div>
+      <p>${gameEscape(gameState.playerNationality)} · ${gameEscape(gameState.playerPosition)} · Perfil ${gameEscape(playerProfileLabel())}. Estas son tres academias aleatorias que pueden iniciar tu historia.</p>
+      <div class="game-team-options">${options.map((team) => `<button class="game-team-option" type="button" data-game-action="select-team" data-team="${gameEscape(team.abreviatura)}"><strong>${gameEscape(team.nombre)}</strong><small>Fuerzas básicas · Desarrollo juvenil</small><span>Elegir academia →</span></button>`).join('')}</div>
+      <button class="text-btn" type="button" data-game-action="start-player">Crear otro jugador</button>
     </article>
   `;
 }
@@ -989,22 +1213,33 @@ function renderPlayerCareer(container) {
   const history = [...gameState.history].reverse();
   const tournaments = [...(gameState.careerTournaments || [])].reverse();
   const trophySummary = tournaments.length ? `<div class="game-trophy-summary"><strong>Trofeos ganados</strong>${tournaments.map((trophy) => `<span>${trophy.age} años · ${gameEscape(trophy.name)}</span>`).join('')}</div>` : '<div class="game-trophy-summary"><strong>Trofeos ganados</strong><span>Aún no has ganado torneos.</span></div>';
+  const attributes = Object.entries(gameState.playerAttributes || {});
+  const attributeLabels = { tecnica: 'Técnica', pase: 'Pase', regate: 'Regate', velocidad: 'Velocidad', tiro: 'Tiro', defensa: 'Defensa', fisico: 'Físico', vision: 'Visión', resistencia: 'Resistencia', mentalidad: 'Mentalidad' };
+  const nextMatch = playerNextMatch();
+  const matchOpponent = nextMatch ? `${nextMatch.local} vs ${nextMatch.visitante}` : 'No hay partido cargado; puedes jugar un amistoso ficticio.';
+  const news = (gameState.playerNews || []).slice(0, 5);
+  const contractText = gameState.playerContract ? `${gameState.playerContract.type} · ${directorMoney(gameState.playerContract.salary)} al año · ${gameState.playerContract.years} años` : 'Contrato formativo por definir';
   container.innerHTML = `
     <div class="game-career-layout">
       <article class="game-profile surface-card">
         <span class="eyebrow">CARRERA DE JUGADOR</span>
-        <div class="game-profile-top"><div class="game-avatar">${gameState.age}</div><div><h2>${gameEscape(team?.nombre || 'Equipo pendiente')}</h2><p>Tu jugador ficticio · Temporada ${gameState.history.length + 1}</p></div></div>
-        <div class="game-stat-grid"><div><span>Edad</span><strong>${gameState.age}</strong></div><div><span>Nivel</span><strong>${gameState.skill}</strong></div><div><span>Goles</span><strong>${gameState.careerGoals}</strong></div><div><span>Asistencias</span><strong>${gameState.careerAssists}</strong></div><div><span>Títulos</span><strong>${gameState.careerTitles}</strong></div><div><span>Lesiones</span><strong>${gameState.injuries}</strong></div></div>
-        <p class="game-save-note">Partida guardada en este navegador.</p>
+        <div class="game-profile-top"><div class="game-avatar">${gameState.age}</div><div><h2>${gameEscape(gameState.playerName || 'Jugador')}</h2><p>${gameEscape(team?.nombre || 'Equipo pendiente')} · ${gameEscape(playerStageLabel())}</p></div></div>
+        <div class="game-stat-grid"><div><span>Edad</span><strong>${gameState.age}</strong></div><div><span>Media</span><strong>${gameState.skill}</strong></div><div><span>Goles</span><strong>${gameState.careerGoals}</strong></div><div><span>Asistencias</span><strong>${gameState.careerAssists}</strong></div><div><span>Títulos</span><strong>${gameState.careerTitles}</strong></div><div><span>Lesiones</span><strong>${gameState.injuries}</strong></div><div><span>Confianza DT</span><strong>${gameState.playerCoachTrust}/100</strong></div><div><span>Popularidad</span><strong>${gameState.playerPopularity}/100</strong></div></div>
+        <div class="player-detail-list"><span><strong>Posición:</strong> ${gameEscape(gameState.playerPosition)} · Pie ${gameEscape(gameState.playerFoot)}</span><span><strong>Perfil:</strong> ${gameEscape(playerProfileLabel())}</span><span><strong>Contrato:</strong> ${gameEscape(contractText)}</span><span><strong>Representante:</strong> ${gameEscape(gameState.playerAgent?.name || 'Por conocer')}</span></div>
+        <p class="game-save-note">La partida se guarda en este navegador.</p>
         <button class="text-btn" type="button" data-game-action="reset-game">Reiniciar carrera</button>
       </article>
       <article class="game-panel surface-card">
-        <div class="game-panel-heading"><div><span class="eyebrow">DECISIÓN DE TEMPORADA</span><h2>¿Qué harás este año?</h2></div><span class="game-season-badge">${gameState.age} AÑOS</span></div>
+        <div class="game-panel-heading"><div><span class="eyebrow">DECISIÓN DE TEMPORADA</span><h2>¿Qué harás este año?</h2></div><span class="game-season-badge">${gameState.age} AÑOS · ${gameEscape(playerStageLabel())}</span></div>
         <p class="game-event-note">${gameEscape(gameState.currentSeasonNote)}</p>
-        ${gameState.phase === 'finished' ? `<div class="game-finished"><strong>¡Carrera completada!</strong><p>${gameEscape(gameState.currentSeasonNote)}</p>${trophySummary}<button class="primary-btn" type="button" data-game-action="reset-game">Comenzar otra carrera</button></div>` : gameState.actionUsed ? `<div class="game-action-complete"><strong>Decisión registrada</strong><p>Revisa el resumen y cierra la temporada para avanzar.</p><button class="primary-btn" type="button" data-game-action="finish-season">Cerrar temporada</button></div>` : `<div class="game-action-grid">${options.map((option) => `<button class="game-action-card" type="button" data-game-action="season-action" data-action-id="${gameEscape(option.id)}"><span>${option.icon}</span><strong>${gameEscape(option.title)}</strong><small>${gameEscape(option.text)}</small></button>`).join('')}</div>`}
+        ${gameState.phase === 'finished' ? `<div class="game-finished"><strong>¡Carrera completada a los 40 años!</strong><p>${gameEscape(gameState.currentSeasonNote)}</p>${trophySummary}<button class="primary-btn" type="button" data-game-action="reset-game">Comenzar otra carrera</button></div>` : gameState.actionUsed ? `<div class="game-action-complete"><strong>Decisión registrada</strong><p>Revisa el resumen y cierra la temporada para avanzar.</p>${gameState.playerCurrentMatch ? `<div class="player-match-report"><strong>${gameEscape(gameState.playerCurrentMatch.score)} vs ${gameEscape(gameState.playerCurrentMatch.opponent)}</strong><span>${gameEscape(gameState.playerCurrentMatch.report)}</span><span>${gameState.playerCurrentMatch.goals} goles · ${gameState.playerCurrentMatch.assists} asistencias · ${gameState.playerCurrentMatch.minutes} minutos</span></div>` : ''}<button class="primary-btn" type="button" data-game-action="finish-season">Cerrar temporada</button></div>` : `<div class="player-status-strip"><span>Estado físico ${gameState.playerFitness}/100</span><span>Ánimo ${gameState.playerMorale}/100</span><span>Fatiga ${gameState.playerFatigue}/100</span></div><div class="game-action-grid">${options.map((option) => `<button class="game-action-card" type="button" data-game-action="season-action" data-action-id="${gameEscape(option.id)}"><span>${option.icon}</span><strong>${gameEscape(option.title)}</strong><small>${gameEscape(option.text)}</small></button>`).join('')}</div>${gameState.age >= 18 && gameState.playerStage !== 'academy' ? `<div class="player-match-panel"><strong>Próximo partido</strong><span>${gameEscape(matchOpponent)}</span><button class="ghost-btn" type="button" data-game-action="player-simulate-match">Simular partido</button></div>` : ''}`}
       </article>
     </div>
-    <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">PALMARÉS Y ESTADÍSTICAS</span><h2>Tu historia temporada a temporada</h2></div><span>${history.length} temporadas</span></div>${history.length ? `<div class="game-history-list">${history.map((season) => `<div class="game-history-row"><strong>${season.age} años</strong><span>${gameEscape(season.team)}</span><span>${season.goals} goles</span><span>${season.assists} asistencias</span><span>${season.trophies?.length ? season.trophies.map((name) => gameEscape(name)).join(', ') : 'Sin títulos'}</span></div>`).join('')}</div>` : '<div class="empty-state">Tu primera temporada aparecerá aquí.</div>'}</article>
+    <div class="player-dashboard-grid">
+      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">DESARROLLO</span><h2>Atributos visibles</h2></div><span>Potencial oculto</span></div><div class="player-attributes-grid">${attributes.map(([key, value]) => `<div><span>${gameEscape(attributeLabels[key] || key)}</span><strong>${value}</strong><i style="width:${value}%"></i></div>`).join('')}</div></article>
+      <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">VIDA PROFESIONAL</span><h2>Entorno</h2></div></div><div class="player-career-facts"><span><strong>Clubes:</strong> ${gameEscape((gameState.playerClubs || []).join(' · ') || 'Academia')}</span><span><strong>Relación con afición:</strong> ${gameState.playerFanRelation}/100</span><span><strong>Agente:</strong> reputación ${gameState.playerAgent?.reputation || 0}/100</span><span><strong>Valor estimado:</strong> ${directorMoney(gameState.playerMarketValue)}</span></div>${news.length ? `<div class="player-news-list">${news.map((item) => `<span><strong>${gameEscape(item.category)}</strong> · ${gameEscape(item.text)}</span>`).join('')}</div>` : ''}</article>
+    </div>
+    <article class="game-history surface-card"><div class="game-panel-heading"><div><span class="eyebrow">PALMARÉS Y ESTADÍSTICAS</span><h2>Tu historia temporada a temporada</h2></div><span>${history.length} temporadas</span></div>${history.length ? `<div class="game-history-list">${history.map((season) => `<div class="game-history-row"><strong>${season.age} años</strong><span>${gameEscape(season.team)} · ${gameEscape(season.stage || '')}</span><span>${season.goals} goles</span><span>${season.assists} asistencias</span><span>${season.trophies?.length ? season.trophies.map((name) => gameEscape(name)).join(', ') : 'Sin títulos'}</span></div>`).join('')}</div>` : '<div class="empty-state">Tu primera temporada aparecerá aquí.</div>'}</article>
   `;
 }
 
@@ -1144,6 +1379,7 @@ function renderJuego() {
     return;
   }
   if (gameState.phase === 'intro') renderGameIntro(container);
+  if (gameState.phase === 'player-create') renderPlayerCreate(container);
   if (gameState.phase === 'offers') renderPlayerOffers(container);
   if (gameState.phase === 'career' || gameState.phase === 'finished') renderPlayerCareer(container);
   if (gameState.phase === 'director-preview') renderDirectorPreview(container);
@@ -1162,6 +1398,7 @@ document.addEventListener('click', (event) => {
   if (action === 'select-team') selectStartingTeam(button.dataset.team);
   if (action === 'select-director-team') selectDirectorTeam(button.dataset.team);
   if (action === 'season-action') performSeasonAction(button.dataset.actionId);
+  if (action === 'player-simulate-match') playerSimulateMatch();
   if (action === 'finish-season') finishSeason();
   if (action === 'director-buy') directorBuy(button.dataset.playerKey);
   if (action === 'director-sell') directorSell(button.dataset.offerId);
@@ -1186,6 +1423,13 @@ document.addEventListener('click', (event) => {
   if (action === 'director-info') {
     startDirectorMode();
   }
+});
+
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('[data-game-form="player-create"]');
+  if (!form) return;
+  event.preventDefault();
+  createPlayerProfile(Object.fromEntries(new FormData(form).entries()));
 });
 
 document.addEventListener('change', (event) => {
