@@ -154,7 +154,18 @@ function loadGameState() {
     state.playerHidden = { ...defaultGameState().playerHidden, ...(state.playerHidden || {}) };
     state.playerSeasonStats = { ...defaultGameState().playerSeasonStats, ...(state.playerSeasonStats || {}) };
     state.playerAgent = { ...defaultGameState().playerAgent, ...(state.playerAgent || {}) };
-    if (state.mode === 'player' && state.phase === 'career' && !state.actionUsed && state.seasonOptions.length < 6) state.seasonOptions = drawSeasonOptions();
+    if (state.mode === 'player') {
+      state.playerName = state.playerName || 'Jugador';
+      state.playerNationality = state.playerNationality || 'Mexicana';
+      state.playerPosition = state.playerPosition || 'Mediocampista';
+      if (state.age >= 18 && state.phase === 'career' && state.playerStage === 'academy') {
+        state.playerStage = 'firstTeam';
+        state.playerRole = 'Titular';
+        state.playerContract = state.playerContract || { salary: Math.round(state.skill * 6500), years: 3, type: 'Primer contrato profesional' };
+        state.currentSeasonNote = `Partida actualizada: a los ${state.age} años ya formas parte del primer equipo.`;
+      }
+      if (state.phase === 'career' && !state.actionUsed && (state.seasonOptions.length < 6 || state.age >= 18 && state.seasonOptions.some((option) => String(option?.id || '').startsWith('academy-')))) state.seasonOptions = drawSeasonOptions(state);
+    }
     return state;
   } catch {
     return defaultGameState();
@@ -194,11 +205,11 @@ function directorMoney(value) {
 }
 
 function directorClubProfile(team) {
-  const name = String(team?.nombre || '').toLowerCase();
+  const name = String(team?.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const largeClub = /america|chivas|toluca|pumas|monterrey|tigres|cruz azul/.test(name);
   const competitiveClub = /leon|pachuca|atlas|tijuana/.test(name);
   const sellerClub = /necaxa/.test(name);
-  const clubType = largeClub ? 'Grande' : competitiveClub ? 'Competitivo' : sellerClub ? 'Vendedor' : 'Pequeño';
+  const clubType = largeClub ? 'Grande' : competitiveClub ? 'Intermedio' : 'Pequeño';
   const reputation = largeClub ? 88 : competitiveClub ? 74 : sellerClub ? 62 : 55;
   return {
     clubType,
@@ -953,8 +964,8 @@ function playerBuildAttributes(position, profile) {
   return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, playerClamp(value)]));
 }
 
-function drawSeasonOptions() {
-  const senior = gameState.age >= 18 && gameState.playerStage !== 'academy';
+function drawSeasonOptions(sourceState = gameState) {
+  const senior = sourceState.age >= 18 && sourceState.playerStage !== 'academy';
   const mainOptions = senior ? [
     { id: 'training', icon: '💪', title: 'Entrenar fuerte', text: 'Subes atributos, pero existe riesgo de lesión.' },
     { id: 'technique', icon: '🎯', title: 'Perfeccionar tu técnica', text: 'Mejoras técnica, pase y regate.' },
@@ -1105,8 +1116,7 @@ function playerEvaluatePromotion() {
   const score = gameState.skill * .55 + gameState.playerCoachTrust * .2 + gameState.playerHidden.professionalism * .15 + gameState.playerHidden.consistency * .1 + randomNumber(-8, 8);
   if (score >= 74) { gameState.playerStage = 'firstTeam'; gameState.playerRole = 'Titular'; gameState.currentSeasonNote = 'El club te promovió al primer equipo como una de sus grandes promesas.'; }
   else if (score >= 63) { gameState.playerStage = 'bench'; gameState.playerRole = 'Suplente'; gameState.currentSeasonNote = 'Te promovieron al primer equipo, aunque tendrás que luchar por minutos.'; }
-  else if (score >= 51) { gameState.playerStage = 'loan'; gameState.playerRole = 'Cedido'; playerTransferToRandomTeam('El club decidió cederte para que sumes experiencia'); }
-  else { gameState.playerStage = 'academy'; gameState.playerRole = 'Canterano'; gameState.currentSeasonNote = 'Continuarás un año más en fuerzas básicas para completar tu formación.'; }
+  else { gameState.playerStage = 'bench'; gameState.playerRole = 'Suplente'; gameState.currentSeasonNote = 'A los 18 años te promovieron al primer equipo, aunque comenzarás como suplente para adaptarte al nivel profesional.'; }
   gameState.playerContract = { salary: Math.round(gameState.skill * 6500), years: 3, type: gameState.playerStage === 'academy' ? 'Formativo' : 'Primer contrato profesional' };
   playerAddNews(gameState.currentSeasonNote, 'Promoción');
 }
