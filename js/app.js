@@ -22,7 +22,7 @@ const appState = {
   authMode: 'login'
 };
 
-const CURRENT_JORNADA_OVERRIDE = 10;
+const CURRENT_JORNADA_OVERRIDE = 11;
 
 const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas', 'juego'];
 
