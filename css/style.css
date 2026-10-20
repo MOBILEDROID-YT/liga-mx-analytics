@@ -1770,6 +1770,9 @@ select:focus-visible {
   margin-top: 5px;
   color: var(--navy);
   font-size: clamp(2.3rem, 5vw, 4rem);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.95);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 14px rgba(1, 14, 31, 0.28);
 }
 
 .page-heading p {
@@ -1803,6 +1806,61 @@ select:focus-visible {
   content: '';
   border: 2px solid rgba(255, 255, 255, 0.72);
   border-radius: 46%;
+}
+
+.page-heading-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 205px;
+}
+
+.youtube-promo {
+  display: flex;
+  width: 205px;
+  flex-direction: column;
+  overflow: hidden;
+  color: #101820;
+  background: #f6c453;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-radius: 15px;
+  box-shadow: 0 10px 24px rgba(1, 14, 31, 0.26);
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.youtube-promo:hover,
+.youtube-promo:focus-visible {
+  color: #101820;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(1, 14, 31, 0.34);
+}
+
+.youtube-promo img {
+  display: block;
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.youtube-promo-label {
+  display: block;
+  padding: 7px 10px 8px;
+  color: #101820;
+  background: linear-gradient(90deg, #f6c453 0%, #f6c453 68%, #101820 68%, #101820 100%);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-align: center;
+}
+
+.page-heading-side .confidence-legend {
+  justify-content: flex-end;
+  max-width: 205px;
 }
 
 .toolbar-card,
@@ -2302,6 +2360,17 @@ select:focus-visible {
   .quiniela-summary { grid-template-columns: repeat(3, 1fr); }
   .quiniela-summary > label { grid-column: span 2; }
   .quiniela-summary > div:last-child { grid-column: span 1; }
+  .page-heading { flex-wrap: wrap; }
+  .page-heading > .youtube-promo { margin-left: auto; }
+  .page-heading-side {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .page-heading-side .confidence-legend { max-width: none; }
+  .youtube-promo { width: min(100%, 205px); }
   .heading-decoration, .fans-decoration, .radar-decoration, .tool-decoration { display: none; }
 }
 
