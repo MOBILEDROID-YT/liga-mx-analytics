@@ -16,6 +16,7 @@
   --surface-soft: #f4f7fb;
   --line: #dfe6ef;
   --shadow: 0 18px 45px rgba(4, 22, 50, 0.13);
+  --app-backdrop: url("../assets/tifo-futbol-mx.png");
   --stadium-photo: url("https://images.unsplash.com/photo-1718547719429-fdd74a231fa8?auto=format&fit=crop&w=1800&q=80");
   --ball-photo: url("https://images.unsplash.com/photo-1668068873075-cf3e9925eae4?auto=format&fit=crop&w=600&q=80");
 }
@@ -31,11 +32,10 @@ html {
 }
 
 body {
+  position: relative;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 8% 8%, rgba(25, 168, 107, 0.08), transparent 23rem),
-    radial-gradient(circle at 92% 52%, rgba(217, 71, 85, 0.07), transparent 25rem),
-    var(--surface-soft);
+  background: #041a2e;
+  isolation: isolate;
   color: var(--ink);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.45;
@@ -43,16 +43,21 @@ body {
 
 body::before {
   position: fixed;
-  inset: 0;
+  inset: -12px;
   z-index: -1;
   pointer-events: none;
   content: '';
-  opacity: 0.28;
+  opacity: 0.3;
   background-image:
+    linear-gradient(180deg, rgba(3, 18, 41, 0.93) 0%, rgba(3, 34, 48, 0.84) 52%, rgba(2, 22, 35, 0.94) 100%),
     linear-gradient(rgba(7, 29, 61, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(7, 29, 61, 0.035) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(to bottom, black, transparent 70%);
+    linear-gradient(90deg, rgba(7, 29, 61, 0.035) 1px, transparent 1px),
+    var(--app-backdrop);
+  background-position: center, center, center, center;
+  background-size: cover, 34px 34px, 34px 34px, cover;
+  background-attachment: fixed;
+  filter: blur(2px);
+  transform: scale(1.02);
 }
 
 button,
@@ -2390,6 +2395,12 @@ select:focus-visible {
 .player-match-report strong { color: var(--navy); font-size: 1rem; }
 .player-news-list { padding-top: 12px; border-top: 1px solid var(--line); }
 .player-news-list strong { color: var(--green-dark); text-transform: uppercase; font-size: .65rem; }
+.home-hero { grid-template-columns: 1fr; min-height: 310px; background: linear-gradient(120deg, rgba(3, 18, 41, 0.97), rgba(7, 29, 61, 0.86) 58%, rgba(8, 117, 74, 0.76)), var(--stadium-photo) center / cover; }
+.hero-copy { max-width: 900px; }
+.surface-card, .standings-block, .calendar-board, .subnav-card, .toolbar-card { background: rgba(255, 255, 255, 0.95); border-color: rgba(214, 226, 237, 0.9); box-shadow: 0 16px 38px rgba(2, 21, 39, 0.2); backdrop-filter: blur(12px); }
+.stat-card { background: rgba(255, 255, 255, 0.94); box-shadow: 0 13px 30px rgba(2, 21, 39, 0.18); backdrop-filter: blur(10px); }
+.primary-btn, .install-btn { box-shadow: 0 7px 16px rgba(7, 29, 61, 0.22); }
+.primary-btn:hover, .install-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
 @media (max-width: 760px) {
   .game-role-grid, .game-team-options, .game-action-grid, .game-career-layout { grid-template-columns: 1fr; }
   .player-create-form, .player-dashboard-grid { grid-template-columns: 1fr; }

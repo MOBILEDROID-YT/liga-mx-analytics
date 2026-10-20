@@ -1033,8 +1033,6 @@ function renderHome() {
   const latestTips = appState.tips.filter((tip) => numericValue(tip.jornada) === latestJornada);
   const historyStats = calculateHistoryStats(appState.history);
 
-  if ($('home-jornada')) $('home-jornada').textContent = currentJornada ? `J${currentJornada}` : '—';
-  if ($('home-hero-caption')) $('home-hero-caption').textContent = currentMatches.length ? `${currentMatches.length} partidos pendientes de J${currentJornada}.` : 'Consulta los partidos disponibles.';
   if ($('home-favorites-count')) $('home-favorites-count').textContent = appState.favorites.length;
   if ($('home-upcoming-count')) $('home-upcoming-count').textContent = currentMatches.length;
   if ($('home-tips-count')) $('home-tips-count').textContent = latestTips.length;
