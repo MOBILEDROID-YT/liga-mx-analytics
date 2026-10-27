@@ -1,4 +1,4 @@
-const cacheName = 'futbol-mx-analisis-pro-shell-v39';
+const cacheName = 'futbol-mx-analisis-pro-shell-v40';
 const appShell = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const appShell = [
   './js/quiz-runtime.js?v=1',
   './js/once-ideal.js?v=1',
   './js/misterioso.js?v=1',
+  './js/reto-dt.js?v=1',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/tifo-futbol-mx.png',

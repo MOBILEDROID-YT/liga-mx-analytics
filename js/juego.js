@@ -1200,6 +1200,9 @@ function renderGameIntro(container) {
         <button class="game-role-card mystery-role-card" type="button" data-game-action="start-mystery">
           <span class="game-role-icon">❓</span><strong>El futbolista misterioso</strong><small>Descubre al jugador con pistas progresivas y hasta 6 intentos.</small><em>Jugar ahora</em>
         </button>
+        <button class="game-role-card dt-role-card" type="button" data-game-action="start-dt">
+          <span class="game-role-icon">🧠</span><strong>Reto DT: tú decides el partido</strong><small>Lee el partido, cambia tu plan y enfrenta ocho escenarios tácticos.</small><em>Dirigir partido</em>
+        </button>
       </div>
     </article>
   `;
@@ -1416,6 +1419,10 @@ function renderJuego() {
     if (typeof renderMystery === 'function') renderMystery(container);
     else container.innerHTML = '<article class="surface-card empty-state">Cargando El futbolista misterioso...</article>';
   }
+  if (gameState.phase === 'dt-challenge') {
+    if (typeof renderDtChallenge === 'function') renderDtChallenge(container);
+    else container.innerHTML = '<article class="surface-card empty-state">Cargando Reto DT...</article>';
+  }
 }
 
 document.addEventListener('click', (event) => {
@@ -1425,6 +1432,7 @@ document.addEventListener('click', (event) => {
   if (action === 'start-player') startPlayerMode();
   if (action === 'start-quiz') startQuizMode();
   if (action === 'start-mystery') startMysteryMode();
+  if (action === 'start-dt') startDtMode();
   if (action === 'select-team') selectStartingTeam(button.dataset.team);
   if (action === 'season-action') performSeasonAction(button.dataset.actionId);
   if (action === 'player-simulate-match') playerSimulateMatch();
