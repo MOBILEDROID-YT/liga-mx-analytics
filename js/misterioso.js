@@ -284,6 +284,7 @@
       state.stats.streak += 1;
       state.stats.bestStreak = Math.max(state.stats.bestStreak, state.stats.streak);
       state.stats.history = [{ id: candidate.id, name: candidate.name, result: 'acierto', attempts: state.attempts, date: new Date().toISOString() }, ...state.stats.history].slice(0, 100);
+      if (typeof window.awardUserPoints === 'function') window.awardUserPoints(Math.max(10, 40 - (state.attempts - 1) * 5), 'Acierto en El futbolista misterioso');
     } else {
       state.revealedClues = Math.min(6, state.revealedClues + 1);
       state.feedback = state.attempts >= maxAttempts ? `Se acabaron los intentos. La respuesta era ${candidate.name}.` : 'No es ese futbolista. Inténtalo de nuevo: se desbloqueó otra pista.';

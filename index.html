@@ -7,7 +7,7 @@
   <meta name="description" content="F&uacute;tbol MX An&aacute;lisis PRO: datos, tips y herramientas para analizar cada jornada.">
   <title>F&uacute;tbol MX An&aacute;lisis PRO</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css?v=23">
+  <link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
   <header class="app-header">
@@ -43,6 +43,7 @@
         <button id="install-app-btn" class="install-btn hidden" type="button">Instalar app</button>
         <button id="auth-open-btn" class="account-btn" type="button">Iniciar sesión</button>
         <div id="auth-user-area" class="auth-user-area hidden" aria-live="polite">
+          <div id="auth-profile-badge" class="auth-profile-badge"></div>
           <button id="auth-account-btn" class="auth-user-label" type="button" aria-label="Abrir mi cuenta"></button>
           <button id="auth-logout-btn" class="logout-btn" type="button">Salir</button>
         </div>
@@ -478,6 +479,7 @@
         <h2 id="account-title">Mi cuenta</h2>
         <p>Informaci&oacute;n de tu perfil y acceso.</p>
       </div>
+      <div id="account-rank" class="account-rank"></div>
       <div class="account-details">
         <div class="account-detail">
           <span>Nombre</span>
@@ -510,6 +512,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js?v=18"></script>
+  <script src="js/rangos.js?v=1"></script>
   <script src="js/juego.js?v=11"></script>
   <script src="js/quiz.js?v=1"></script>
   <script src="js/quiz-runtime.js?v=1"></script>

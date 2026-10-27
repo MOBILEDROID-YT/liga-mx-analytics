@@ -3177,6 +3177,27 @@ select:focus-visible {
   .dt-pitch-player, .dt-event { animation: none; }
 }
 
+.auth-profile-badge { display: flex; width: 50px; height: 70px; flex: 0 0 50px; align-items: center; justify-content: center; }
+.rank-badge { position: relative; display: block; overflow: hidden; aspect-ratio: 334 / 470; }
+.rank-badge-compact { width: 50px; height: 70px; }
+.rank-badge-account { width: 164px; height: 230px; }
+.rank-badge-art { position: absolute; inset: 0; background-image: url('../assets/rangos-insignias.png'); background-position: var(--rank-x) var(--rank-y); background-repeat: no-repeat; background-size: 500% 200%; }
+.rank-avatar-photo, .rank-avatar-fallback { position: absolute; top: 17%; left: 26%; display: grid; width: 48%; aspect-ratio: 1; place-items: center; overflow: hidden; color: #fff; background: linear-gradient(135deg, #0a7d55, #071d3d); border: 2px solid rgba(255, 255, 255, .9); border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, .38); font-size: .72rem; font-weight: 900; object-fit: cover; }
+.rank-badge-account .rank-avatar-photo, .rank-badge-account .rank-avatar-fallback { border-width: 3px; font-size: 1.35rem; }
+.account-rank { display: grid; grid-template-columns: 175px 1fr; gap: 13px; align-items: center; margin: 18px 0 8px; padding: 10px 12px; background: linear-gradient(135deg, #f8fafc, #fff9df); border: 1px solid #e9d68f; border-radius: 12px; }
+.account-rank-visual { display: flex; justify-content: center; }
+.account-rank-copy { display: grid; gap: 4px; }
+.account-rank-copy strong { color: var(--navy); font-family: 'Barlow Condensed', sans-serif; font-size: 1.7rem; line-height: 1; text-transform: uppercase; }
+.account-rank-copy > span:not(.eyebrow) { color: var(--green-dark); font-size: .84rem; font-weight: 900; }
+.account-rank-copy small { color: var(--muted); font-size: .7rem; line-height: 1.35; }
+
+@media (max-width: 760px) {
+  .auth-profile-badge { width: 44px; height: 62px; flex-basis: 44px; }
+  .rank-badge-compact { width: 44px; height: 62px; }
+  .account-rank { grid-template-columns: 130px 1fr; }
+  .rank-badge-account { width: 124px; height: 175px; }
+}
+
 @media (max-width: 760px) {
   .dt-heading, .dt-match-header { flex-direction: column; }
   .dt-whistle { display: none; }

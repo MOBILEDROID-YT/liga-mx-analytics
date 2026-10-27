@@ -740,6 +740,8 @@ function setAuthSession(session) {
     userLabel.textContent = '';
     closeAccountModal();
   }
+  if (typeof window.updateUserRankUI === 'function') window.updateUserRankUI(appState.user);
+  window.dispatchEvent(new CustomEvent('auth:user-changed', { detail: appState.user }));
 }
 
 function setAuthMessage(message, type = '') {

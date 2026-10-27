@@ -31,6 +31,7 @@ function submitQuizAnswer(optionIndex) {
   gameState.quizCorrect = selected === question.correct;
   if (gameState.quizCorrect) {
     gameState.quizScore += 1;
+    if (typeof window.awardUserPoints === 'function') window.awardUserPoints(10, 'Respuesta correcta del cuestionario');
   } else {
     consumeQuizLife();
   }

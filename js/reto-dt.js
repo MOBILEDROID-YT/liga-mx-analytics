@@ -288,6 +288,7 @@
     state.performance = clamp((state.performance / Math.max(1, state.decisions.length)) + resultBonus - Math.round(state.risk / 12) + Math.round(state.emotion / 18));
     state.screen = 'result';
     state.targetId = '';
+    if (typeof window.awardUserPoints === 'function') window.awardUserPoints(Math.max(10, Math.round(state.performance / 2)), 'Desafío completado en Reto DT');
     state.history = [{ id: `${Date.now()}-${state.seed}`, scenario: scenario().title, team: teamName(state.teamAbbreviation), opponent: teamName(state.opponentAbbreviation), score: `${state.goalsFor}-${state.goalsAgainst}`, performance: state.performance, difficulty: difficulty().label, date: new Date().toISOString(), decisions: state.decisions.length }, ...state.history].slice(0, 30);
     state.message = `Partido terminado: ${state.goalsFor}-${state.goalsAgainst}.`;
     saveState();
