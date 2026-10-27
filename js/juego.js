@@ -1197,6 +1197,9 @@ function renderGameIntro(container) {
         <button class="game-role-card quiz-role-card" type="button" data-game-action="start-quiz">
           <span class="game-role-icon">🏆</span><strong>¿Qué tanto sabes del fútbol mexicano?</strong><small>50 niveles de historia, récords y cultura futbolística. Empieza en el nivel 1.</small><em>Comenzar reto</em>
         </button>
+        <button class="game-role-card mystery-role-card" type="button" data-game-action="start-mystery">
+          <span class="game-role-icon">❓</span><strong>El futbolista misterioso</strong><small>Descubre al jugador con pistas progresivas y hasta 6 intentos.</small><em>Jugar ahora</em>
+        </button>
       </div>
     </article>
   `;
@@ -1409,6 +1412,10 @@ function renderJuego() {
   if (gameState.phase === 'offers') renderPlayerOffers(container);
   if (gameState.phase === 'career' || gameState.phase === 'finished') renderPlayerCareer(container);
   if (gameState.phase === 'quiz') renderQuiz(container);
+  if (gameState.phase === 'mystery') {
+    if (typeof renderMystery === 'function') renderMystery(container);
+    else container.innerHTML = '<article class="surface-card empty-state">Cargando El futbolista misterioso...</article>';
+  }
 }
 
 document.addEventListener('click', (event) => {
@@ -1417,6 +1424,7 @@ document.addEventListener('click', (event) => {
   const action = button.dataset.gameAction;
   if (action === 'start-player') startPlayerMode();
   if (action === 'start-quiz') startQuizMode();
+  if (action === 'start-mystery') startMysteryMode();
   if (action === 'select-team') selectStartingTeam(button.dataset.team);
   if (action === 'season-action') performSeasonAction(button.dataset.actionId);
   if (action === 'player-simulate-match') playerSimulateMatch();

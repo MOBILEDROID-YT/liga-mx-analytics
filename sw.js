@@ -9,6 +9,7 @@ const appShell = [
   './js/quiz.js?v=1',
   './js/quiz-runtime.js?v=1',
   './js/once-ideal.js?v=1',
+  './js/misterioso.js?v=1',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/tifo-futbol-mx.png',
