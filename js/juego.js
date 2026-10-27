@@ -83,6 +83,12 @@ function defaultGameState() {
     careerAssists: 0,
     careerTitles: 0,
     careerTournaments: [],
+    quizIndex: 0,
+    quizScore: 0,
+    quizAnswered: false,
+    quizSelected: null,
+    quizCorrect: false,
+    quizCompleted: false,
     injuries: 0,
     seasonOptions: [],
     actionUsed: false,
@@ -154,6 +160,12 @@ function loadGameState() {
     state.playerHidden = { ...defaultGameState().playerHidden, ...(state.playerHidden || {}) };
     state.playerSeasonStats = { ...defaultGameState().playerSeasonStats, ...(state.playerSeasonStats || {}) };
     state.playerAgent = { ...defaultGameState().playerAgent, ...(state.playerAgent || {}) };
+    if (state.mode === 'director' || String(state.phase || '').startsWith('director-')) {
+      state.mode = '';
+      state.phase = 'intro';
+      state.directorFired = false;
+      state.directorMessage = '';
+    }
     if (state.mode === 'player') {
       state.playerName = state.playerName || 'Jugador';
       state.playerNationality = state.playerNationality || 'Mexicana';
@@ -1178,8 +1190,8 @@ function renderGameIntro(container) {
         <button class="game-role-card" type="button" data-game-action="start-player">
           <span class="game-role-icon">⚽</span><strong>Jugador</strong><small>Crea un futbolista y construye una carrera de los 16 a los 40 años.</small>
         </button>
-        <button class="game-role-card" type="button" data-game-action="start-director">
-          <span class="game-role-icon">📋</span><strong>Director deportivo</strong><small>Fichajes, presupuesto y decisiones del club.</small><em>Jugar ahora</em>
+        <button class="game-role-card quiz-role-card" type="button" data-game-action="start-quiz">
+          <span class="game-role-icon">🏆</span><strong>¿Qué tanto sabes del fútbol mexicano?</strong><small>50 niveles de historia, récords y cultura futbolística. Empieza en el nivel 1.</small><em>Comenzar reto</em>
         </button>
       </div>
     </article>
@@ -1392,11 +1404,7 @@ function renderJuego() {
   if (gameState.phase === 'player-create') renderPlayerCreate(container);
   if (gameState.phase === 'offers') renderPlayerOffers(container);
   if (gameState.phase === 'career' || gameState.phase === 'finished') renderPlayerCareer(container);
-  if (gameState.phase === 'director-preview') renderDirectorPreview(container);
-  if (gameState.phase === 'director-choose-team') renderDirectorTeamChoice(container);
-  if (gameState.phase === 'director-dashboard') renderDirectorDashboard(container);
-  if (gameState.phase === 'director-job-offers') renderDirectorJobOffers(container);
-  if (gameState.phase === 'director-career-finished') renderDirectorCareerFinished(container);
+  if (gameState.phase === 'quiz') renderQuiz(container);
 }
 
 document.addEventListener('click', (event) => {
@@ -1404,35 +1412,15 @@ document.addEventListener('click', (event) => {
   if (!button) return;
   const action = button.dataset.gameAction;
   if (action === 'start-player') startPlayerMode();
-  if (action === 'start-director') startDirectorMode();
+  if (action === 'start-quiz') startQuizMode();
   if (action === 'select-team') selectStartingTeam(button.dataset.team);
-  if (action === 'select-director-team') selectDirectorTeam(button.dataset.team);
   if (action === 'season-action') performSeasonAction(button.dataset.actionId);
   if (action === 'player-simulate-match') playerSimulateMatch();
   if (action === 'finish-season') finishSeason();
-  if (action === 'director-buy') directorBuy(button.dataset.playerKey);
-  if (action === 'director-sell') directorSell(button.dataset.offerId);
-  if (action === 'director-sponsorship') directorSponsorship();
-  if (action === 'director-academy') directorAcademy();
-  if (action === 'director-loan') directorLoanPlayer(button.dataset.playerKey);
-  if (action === 'director-hire-staff') directorHireStaff(button.dataset.staffType);
-  if (action === 'director-ticket-up') directorChangeTicket('up');
-  if (action === 'director-ticket-down') directorChangeTicket('down');
-  if (action === 'director-merchandising') directorUpgradeMerchandising();
-  if (action === 'director-installation') directorUpgradeInstallation(button.dataset.installation);
-  if (action === 'director-simulate') directorSimulateSeason();
-  if (action === 'director-simulate-match') directorSimulateMatch();
-  if (action === 'director-decision') directorResolveDecision(button.dataset.decisionId, button.dataset.optionId);
-  if (action === 'director-start-negotiation') directorStartNegotiation(button.dataset.playerKey);
-  if (action === 'director-contact-club') directorContactClub();
-  if (action === 'director-ask-price') directorAskPrice();
-  if (action === 'director-submit-negotiation') directorSubmitNegotiation();
-  if (action === 'director-cancel-negotiation') { gameState.directorNegotiation = null; saveGameState(); renderJuego(); }
-  if (action === 'director-take-job') directorTakeJob(button.dataset.team);
+  if (action === 'quiz-answer') submitQuizAnswer(button.dataset.optionIndex);
+  if (action === 'quiz-next') advanceQuiz();
+  if (action === 'quiz-restart') startQuizMode();
   if (action === 'reset-game') resetGame();
-  if (action === 'director-info') {
-    startDirectorMode();
-  }
 });
 
 document.addEventListener('submit', (event) => {
