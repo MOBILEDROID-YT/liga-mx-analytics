@@ -89,6 +89,10 @@ function defaultGameState() {
     quizSelected: null,
     quizCorrect: false,
     quizCompleted: false,
+    quizLives: 3,
+    quizFireLives: 0,
+    quizRefillAt: 0,
+    quizSubscriptionPending: false,
     injuries: 0,
     seasonOptions: [],
     actionUsed: false,
@@ -1420,6 +1424,9 @@ document.addEventListener('click', (event) => {
   if (action === 'quiz-answer') submitQuizAnswer(button.dataset.optionIndex);
   if (action === 'quiz-next') advanceQuiz();
   if (action === 'quiz-restart') startQuizMode();
+  if (action === 'quiz-wait-lives') waitForQuizLives();
+  if (action === 'quiz-subscribe') openQuizSubscription();
+  if (action === 'quiz-claim-subscription') claimQuizSubscriptionLives();
   if (action === 'reset-game') resetGame();
 });
 
