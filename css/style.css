@@ -2992,7 +2992,11 @@ select:focus-visible {
 }
 
 @media (min-width: 1040px) {
-  .game-role-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .game-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1440px) {
+  .game-role-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 .mystery-role-card { border-color: #c58c1c; background: linear-gradient(145deg, #fffaf0, #f8f2e4); }
@@ -3113,7 +3117,7 @@ select:focus-visible {
 .dt-pitch::after { position: absolute; top: 8%; bottom: 8%; left: 50%; border-left: 2px solid rgba(255,255,255,.78); content: ''; }
 .dt-pitch-center { position: absolute; top: 50%; left: 50%; width: 20%; aspect-ratio: 1; border: 2px solid rgba(255,255,255,.78); border-radius: 50%; transform: translate(-50%, -50%); }
 .dt-pitch-box { position: absolute; top: 8%; left: 16%; width: 20%; height: 84%; border: 2px solid rgba(255,255,255,.78); border-left: 0; }
-.dt-pitch-player { position: absolute; z-index: 2; display: grid; width: 54px; height: 35px; padding: 3px; place-items: center; color: #fff; background: #092044; border: 2px solid #f6bd38; border-radius: 7px; text-align: center; transform: translate(-50%, -50%); }
+.dt-pitch-player { position: absolute; z-index: 2; display: grid; width: 54px; height: 35px; padding: 3px; place-items: center; color: #fff; background: #092044; border: 2px solid #f6bd38; border-radius: 7px; text-align: center; transform: translate(-50%, -50%); animation: dt-player-enter .35s ease both; }
 .dt-pitch-player span { max-width: 100%; overflow: hidden; font-size: .56rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 .dt-pitch-player small { color: #f6bd38; font-size: .49rem; font-weight: 900; }
 .dt-position-por { border-color: #55e49d; }
@@ -3139,7 +3143,7 @@ select:focus-visible {
 .dt-choice strong { font-size: .76rem; }
 .dt-choice small { color: var(--muted); font-size: .66rem; line-height: 1.35; }
 .dt-timeline { display: grid; gap: 6px; margin-top: 17px; }
-.dt-event { display: grid; grid-template-columns: 35px 1fr; gap: 7px; padding: 8px; color: var(--muted); background: var(--surface-soft); border-radius: 7px; font-size: .68rem; line-height: 1.4; }
+.dt-event { display: grid; grid-template-columns: 35px 1fr; gap: 7px; padding: 8px; color: var(--muted); background: var(--surface-soft); border-radius: 7px; font-size: .68rem; line-height: 1.4; animation: dt-event-enter .3s ease both; }
 .dt-event strong { color: #b68a2d; }
 .dt-event.goal { color: #086b46; background: #e9f8f0; }
 .dt-bottom-actions { display: flex; gap: 9px; align-items: center; justify-content: space-between; margin-top: 15px; }
@@ -3156,7 +3160,22 @@ select:focus-visible {
 .dt-decision-history strong { color: var(--navy); }
 .dt-decision-history span { color: var(--muted); }
 .dt-result-columns ul { display: grid; gap: 8px; margin: 0; padding-left: 19px; color: var(--muted); font-size: .75rem; line-height: 1.4; }
+.dt-result-events { margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--line); text-align: left; }
 .dt-result .dt-actions { justify-content: center; }
+
+@keyframes dt-player-enter {
+  from { opacity: 0; transform: translate(-50%, -45%) scale(.94); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dt-event-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-pitch-player, .dt-event { animation: none; }
+}
 
 @media (max-width: 760px) {
   .dt-heading, .dt-match-header { flex-direction: column; }

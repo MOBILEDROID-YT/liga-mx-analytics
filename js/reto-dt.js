@@ -56,6 +56,7 @@
     message: '',
     seed: 0,
     rngStep: 0,
+    targetId: '',
     history: [],
     rows: []
   };
@@ -246,8 +247,10 @@
       if (Object.prototype.hasOwnProperty.call(state, key)) state[key] = clamp(state[key] + amount, key === 'fatigue' ? 0 : 0, 100);
     });
     state.activePlayers.forEach((player) => { player.fatigue = clamp(player.fatigue + 2 + Math.round((state.fatigue - 45) / 22)); });
+    const numericalDisadvantage = activeCount() < 11 ? 6 : 0;
+    const formationAdjustment = state.formation === '5-4-1' || state.formation === '4-4-1' ? -2 : state.formation === '3-4-3' ? 3 : 0;
     const rivalAdjustment = state.goalsFor <= state.goalsAgainst ? difficulty().rival + 2 : -3;
-    state.rivalPressure = clamp(state.rivalPressure + rivalAdjustment + (action.id === 'protect' ? 7 : 0));
+    state.rivalPressure = clamp(state.rivalPressure + rivalAdjustment + numericalDisadvantage + formationAdjustment + (action.id === 'protect' ? 7 : 0));
     state.rivalPlan = state.rivalPressure > 70 ? 'bloque alto y presión' : state.rivalPressure < 38 ? 'bloque bajo' : 'bloque medio';
     const attackPower = state.offense * .48 + state.midfield * .24 + state.emotion * .1 + state.risk * .18;
     const resistance = 53 + difficulty().rival * .8 + state.rivalPressure * .16;
@@ -284,6 +287,7 @@
     const resultBonus = goalDifference > 0 ? 18 : goalDifference === 0 ? 10 : 4;
     state.performance = clamp((state.performance / Math.max(1, state.decisions.length)) + resultBonus - Math.round(state.risk / 12) + Math.round(state.emotion / 18));
     state.screen = 'result';
+    state.targetId = '';
     state.history = [{ id: `${Date.now()}-${state.seed}`, scenario: scenario().title, team: teamName(state.teamAbbreviation), opponent: teamName(state.opponentAbbreviation), score: `${state.goalsFor}-${state.goalsAgainst}`, performance: state.performance, difficulty: difficulty().label, date: new Date().toISOString(), decisions: state.decisions.length }, ...state.history].slice(0, 30);
     state.message = `Partido terminado: ${state.goalsFor}-${state.goalsAgainst}.`;
     saveState();
@@ -298,6 +302,7 @@
     const useIdeal = Boolean(el('dt-use-ideal')?.checked);
     const baseRoster = useIdeal ? idealPlayers() : rosterForTeam(team);
     if (!team || !opponent || baseRoster.length < 11) {
+      state.screen = 'setup';
       state.message = useIdeal && idealPlayers().length < 11 ? 'Tu Once Ideal necesita 11 jugadores guardados para iniciar una simulación fantástica.' : 'El equipo seleccionado todavía no tiene 11 jugadores cargados en Supabase.';
       renderDtChallenge(el('game-container'));
       return;
@@ -372,7 +377,7 @@
   function renderSetup(container) {
     const { teams, selectedTeam, selectedOpponent } = renderTeamOptions();
     const idealCount = idealPlayers().length;
-    const resume = state.screen === 'playing' && state.targetId !== '';
+    const resume = state.screen === 'setup' && Boolean(state.targetId);
     container.innerHTML = `<article class="dt-shell surface-card"><div class="dt-heading"><div><span class="eyebrow">SIMULACIÓN TÁCTICA</span><h2>Reto DT: tú decides el partido</h2><p>Asume el banquillo durante una situación difícil. Tus decisiones cambian el riesgo, el cansancio, la respuesta rival y el resultado.</p></div><div class="dt-whistle">⚽</div></div><div class="dt-disclaimer">Todos los partidos son ficticios y están identificados como simulaciones. Las variables no son pronósticos oficiales.</div><div class="dt-setup-grid"><label>Equipo<select id="dt-team">${teams.map((team) => `<option value="${escapeValue(team.abreviatura)}" ${team.abreviatura === selectedTeam ? 'selected' : ''}>${escapeValue(team.nombre)}</option>`).join('')}</select></label><label>Rival<select id="dt-opponent">${teams.filter((team) => team.abreviatura !== selectedTeam).map((team) => `<option value="${escapeValue(team.abreviatura)}" ${team.abreviatura === selectedOpponent ? 'selected' : ''}>${escapeValue(team.nombre)}</option>`).join('')}</select></label><label>Escenario<select id="dt-scenario">${scenarios.map((item) => `<option value="${item.id}" ${item.id === state.scenarioId ? 'selected' : ''}>${escapeValue(item.title)}</option>`).join('')}</select></label><label>Dificultad<select id="dt-difficulty">${Object.entries(difficulties).map(([id, item]) => `<option value="${id}" ${id === state.difficulty ? 'selected' : ''}>${item.label}</option>`).join('')}</select></label><label>Formación inicial<select id="dt-formation">${formations.filter((formation) => formation.required === 11).map((formation) => `<option value="${formation.id}" ${formation.id === state.formation ? 'selected' : ''}>${escapeValue(formation.label)}</option>`).join('')}</select></label><label class="dt-ideal-option"><span>Plantilla</span><span><input id="dt-use-ideal" type="checkbox" ${state.useIdeal ? 'checked' : ''} ${idealCount >= 11 ? '' : 'disabled'}> Usar Mi Once Ideal (${idealCount}/11)</span><small>${idealCount >= 11 ? 'Se marcará como simulación fantástica.' : 'Guarda 11 jugadores en Mi Once Ideal para habilitarla.'}</small></label></div><div class="dt-scenario-preview"><strong>${escapeValue((scenarios.find((item) => item.id === state.scenarioId) || scenarios[0]).title)}</strong><span>${escapeValue((scenarios.find((item) => item.id === state.scenarioId) || scenarios[0]).text)}</span><small>Rondas de decisión: ${(scenarios.find((item) => item.id === state.scenarioId) || scenarios[0]).rounds} · Jugadores disponibles: ${state.rows.length ? 'cargados desde Supabase' : 'cargando...'}</small></div><div class="dt-actions"><button class="primary-btn" type="button" data-dt-action="start" ${teams.length ? '' : 'disabled'}>${resume ? 'Comenzar nueva simulación' : 'Comenzar simulación'}</button>${resume ? '<button class="secondary-btn" type="button" data-dt-action="resume">Continuar partida pausada</button>' : ''}<button class="text-btn" type="button" data-game-action="reset-game">Volver a juegos</button></div>${state.message && state.screen === 'setup' ? `<div class="dt-feedback">${escapeValue(state.message)}</div>` : ''}${renderDtHistory()}</article>`;
   }
 
@@ -424,7 +429,8 @@
     const draw = state.goalsFor === state.goalsAgainst;
     const title = won ? 'Victoria táctica' : draw ? 'Empate trabajado' : 'Derrota con aprendizaje';
     const actionRows = state.decisions.map((decision) => `<div><strong>${decision.minute}' · ${escapeValue(decision.label)}</strong><span>${decision.beforeScore} → ${decision.afterScore} · ${decision.quality}/100</span></div>`).join('');
-    container.innerHTML = `<article class="dt-shell surface-card dt-result"><div class="dt-result-badge">${won ? '✓' : draw ? '＝' : '↺'}</div><span class="eyebrow">INFORME FINAL · SIMULACIÓN</span><h2>${title}</h2><p>${escapeValue(teamName(state.teamAbbreviation))} ${state.goalsFor} - ${state.goalsAgainst} ${escapeValue(teamName(state.opponentAbbreviation))}</p><div class="dt-final-grid"><div><span>Desempeño DT</span><strong>${state.performance}/100</strong></div><div><span>Riesgo asumido</span><strong>${state.risk}/100</strong></div><div><span>Cambios</span><strong>${state.substitutionsUsed}/${maxSubstitutions}</strong></div><div><span>Formación final</span><strong>${escapeValue(state.formation)}</strong></div></div><div class="dt-result-columns"><section><div class="dt-section-heading"><span class="eyebrow">DECISIONES</span><strong>Lo que ordenaste</strong></div><div class="dt-decision-history">${actionRows || '<div>No hubo decisiones registradas.</div>'}</div></section><section><div class="dt-section-heading"><span class="eyebrow">RECOMENDACIONES</span><strong>Para el siguiente reto</strong></div><ul>${recommendations().map((recommendation) => `<li>${escapeValue(recommendation)}</li>`).join('')}</ul></section></div><div class="dt-actions"><button class="primary-btn" type="button" data-dt-action="new">Nuevo desafío</button><button class="secondary-btn" type="button" data-dt-action="setup">Cambiar configuración</button><button class="text-btn" type="button" data-game-action="reset-game">Volver a juegos</button></div></article>`;
+    const eventRows = state.events.slice(0, 6).map((event) => `<div class="dt-event ${event.type}"><strong>${event.minute}'</strong><span>${escapeValue(event.text)}</span></div>`).join('');
+    container.innerHTML = `<article class="dt-shell surface-card dt-result"><div class="dt-result-badge">${won ? '✓' : draw ? '＝' : '↺'}</div><span class="eyebrow">INFORME FINAL · SIMULACIÓN</span><h2>${title}</h2><p>${escapeValue(teamName(state.teamAbbreviation))} ${state.goalsFor} - ${state.goalsAgainst} ${escapeValue(teamName(state.opponentAbbreviation))}</p><div class="dt-final-grid"><div><span>Desempeño DT</span><strong>${state.performance}/100</strong></div><div><span>Riesgo asumido</span><strong>${state.risk}/100</strong></div><div><span>Cambios</span><strong>${state.substitutionsUsed}/${maxSubstitutions}</strong></div><div><span>Formación final</span><strong>${escapeValue(state.formation)}</strong></div></div><div class="dt-result-columns"><section><div class="dt-section-heading"><span class="eyebrow">DECISIONES</span><strong>Lo que ordenaste</strong></div><div class="dt-decision-history">${actionRows || '<div>No hubo decisiones registradas.</div>'}</div></section><section><div class="dt-section-heading"><span class="eyebrow">RECOMENDACIONES</span><strong>Para el siguiente reto</strong></div><ul>${recommendations().map((recommendation) => `<li>${escapeValue(recommendation)}</li>`).join('')}</ul></section></div><section class="dt-result-events"><div class="dt-section-heading"><span class="eyebrow">MOMENTOS IMPORTANTES</span><strong>Cómo respondió el partido</strong></div><div class="dt-timeline">${eventRows || '<div class="dt-event"><span>Sin acontecimientos destacados.</span></div>'}</div></section><div class="dt-actions"><button class="primary-btn" type="button" data-dt-action="new">Nuevo desafío</button><button class="secondary-btn" type="button" data-dt-action="setup">Cambiar configuración</button><button class="text-btn" type="button" data-game-action="reset-game">Volver a juegos</button></div></article>`;
   }
 
   function renderDtChallenge(container) {
