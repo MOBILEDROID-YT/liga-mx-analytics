@@ -2891,3 +2891,102 @@ select:focus-visible {
 @media (max-width: 760px) {
   .quiz-status { width: 100%; justify-items: start; }
 }
+
+.once-ideal-page { padding-bottom: 46px; }
+.once-ideal-heading { align-items: center; }
+.once-ideal-heading-badge { display: grid; min-width: 92px; padding: 12px 16px; place-items: center; color: #071d3d; background: var(--yellow); border: 2px solid #071d3d; border-radius: 16px; box-shadow: 6px 6px 0 #071d3d; }
+.once-ideal-heading-badge span { font-family: 'Barlow Condensed', sans-serif; font-size: 2.7rem; font-weight: 900; line-height: .8; }
+.once-ideal-heading-badge small { margin-top: 7px; font-size: .63rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.once-ideal-status { margin: 0 0 16px; padding: 11px 15px; color: var(--muted); background: rgba(255,255,255,.88); border: 1px solid var(--line); border-radius: 10px; font-size: .78rem; font-weight: 700; }
+.once-ideal-status.success { color: var(--green-dark); background: #eaf9f1; border-color: #a9dfc3; }
+.once-ideal-status.error { color: #9c1d2a; background: #fff0f1; border-color: #efb4ba; }
+.once-ideal-layout { display: grid; grid-template-columns: minmax(230px, .68fr) minmax(420px, 1.6fr) minmax(260px, .78fr); gap: 16px; align-items: start; }
+.once-ideal-controls, .once-ideal-board-panel, .once-ideal-roster-panel { min-width: 0; padding: 18px; }
+.once-ideal-card-heading { margin-bottom: 14px; }
+.once-ideal-card-heading.compact { margin-bottom: 8px; }
+.once-ideal-card-heading h2, .once-ideal-card-heading h3 { margin: 3px 0 0; color: var(--navy); font-family: 'Barlow Condensed', sans-serif; line-height: 1; }
+.once-ideal-card-heading h2 { font-size: 1.65rem; }
+.once-ideal-card-heading h3 { font-size: 1.25rem; }
+.once-ideal-form-fields, .once-ideal-role-fields { display: grid; gap: 10px; margin-top: 12px; }
+.once-ideal-form-fields label, .once-ideal-role-fields label { display: grid; gap: 5px; }
+.once-ideal-role-fields { padding-top: 12px; border-top: 1px solid var(--line); }
+.text-control { width: 100%; min-height: 42px; padding: 10px 12px; color: var(--navy); background: #fff; border: 1px solid var(--line); border-radius: 9px; font: inherit; }
+.text-control:focus, .once-ideal-controls select:focus { outline: 2px solid rgba(246,189,56,.55); border-color: var(--yellow); }
+.once-ideal-actions { display: grid; gap: 8px; margin-top: 16px; }
+.once-ideal-actions button { width: 100%; }
+.once-ideal-challenge { display: grid; gap: 5px; margin-top: 17px; padding: 12px; color: var(--navy); background: #fff8e5; border: 1px solid #f3d27a; border-left: 4px solid var(--yellow); border-radius: 10px; }
+.once-ideal-challenge.complete { background: #eaf9f1; border-color: #a9dfc3; border-left-color: var(--green); }
+.once-ideal-challenge strong { font-size: .9rem; }
+.once-ideal-challenge p { margin: 0; color: var(--muted); font-size: .72rem; line-height: 1.4; }
+.once-ideal-saved-block { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
+.once-ideal-saved-list { display: grid; gap: 7px; }
+.once-ideal-saved-item { display: flex; gap: 7px; align-items: center; justify-content: space-between; padding: 8px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; }
+.once-ideal-saved-item div { min-width: 0; display: grid; gap: 2px; }
+.once-ideal-saved-item strong { overflow: hidden; color: var(--navy); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.once-ideal-saved-item small { color: var(--muted); font-size: .63rem; }
+.once-ideal-saved-item span { display: flex; gap: 4px; }
+.once-ideal-saved-item button { padding: 5px 7px; color: var(--navy); background: #fff; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: .63rem; font-weight: 800; cursor: pointer; }
+.once-ideal-saved-item button:hover { border-color: var(--green); }
+.once-ideal-saved-item button:last-child { color: var(--red); }
+.once-ideal-board-panel { overflow: hidden; }
+.once-ideal-board-toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; color: var(--navy); }
+.once-ideal-board-toolbar > div { min-width: 0; display: grid; gap: 2px; }
+.once-ideal-board-toolbar strong { overflow: hidden; font-family: 'Barlow Condensed', sans-serif; font-size: 1.45rem; text-overflow: ellipsis; white-space: nowrap; }
+.once-ideal-board-toolbar span { color: var(--muted); font-size: .68rem; font-weight: 800; }
+.once-ideal-board-toolbar > span { flex: 0 0 auto; padding: 6px 9px; color: var(--green-dark); background: #eaf9f1; border-radius: 999px; font-size: .65rem; }
+.once-ideal-board { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background-color: #0b0b0b; background-position: center; background-size: cover; border: 2px solid #f6bd38; border-radius: 13px; box-shadow: inset 0 0 35px rgba(0,0,0,.45); }
+.once-ideal-board.wide { background-image: url('../assets/once-ideal-pitch-wide.png'); }
+.once-ideal-board.tall { aspect-ratio: 9 / 16; max-height: 720px; margin: 0 auto; background-image: url('../assets/once-ideal-pitch-tall.png'); }
+.once-ideal-stars-image { position: absolute; inset: 6%; width: 88%; height: 88%; object-fit: contain; opacity: .15; mix-blend-mode: screen; pointer-events: none; }
+.once-ideal-slots { position: absolute; inset: 0; }
+.once-ideal-slot { position: absolute; left: var(--wide-x); top: var(--wide-y); z-index: 2; width: 0; height: 0; }
+.once-ideal-board.tall .once-ideal-slot { left: var(--tall-x); top: var(--tall-y); }
+.once-ideal-star { position: absolute; left: 0; top: 0; display: grid; width: clamp(48px, 8vw, 86px); min-height: 56px; padding: 0 4px 5px; place-items: center; color: #f6bd38; background: transparent; border: 0; transform: translate(-50%, -50%); cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,.75)); }
+.once-ideal-star:hover, .once-ideal-star:focus-visible { z-index: 4; transform: translate(-50%, -50%) scale(1.08); filter: drop-shadow(0 0 7px rgba(246,189,56,.85)); }
+.once-ideal-star-glyph { position: absolute; inset: 0; color: #f6bd38; font-size: clamp(3rem, 7vw, 5.2rem); line-height: 1; }
+.once-ideal-slot-name, .once-ideal-star small { position: relative; z-index: 1; max-width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.once-ideal-slot-name { margin-top: 31px; color: #fff; font-size: clamp(.48rem, 1vw, .72rem); font-weight: 900; text-shadow: 0 1px 3px #000, 0 0 4px #000; }
+.once-ideal-star small { margin-top: 2px; color: rgba(255,255,255,.88); font-size: .5rem; font-weight: 900; text-shadow: 0 1px 3px #000; }
+.once-ideal-player-green .once-ideal-slot-name, .once-ideal-player-position.once-ideal-player-green { color: #55e49d; }
+.once-ideal-player-white .once-ideal-slot-name, .once-ideal-player-position.once-ideal-player-white { color: #fff; }
+.once-ideal-player-cyan .once-ideal-slot-name, .once-ideal-player-position.once-ideal-player-cyan { color: #8ee9ff; }
+.once-ideal-board-help { margin: 10px 0 0; color: var(--muted); font-size: .68rem; line-height: 1.4; }
+.once-ideal-roster-panel { max-height: 760px; overflow: hidden; }
+.once-ideal-roster-panel > .select-control { margin-top: 8px; }
+.once-ideal-roster-meta { display: flex; gap: 5px; justify-content: space-between; margin: 10px 0 7px; color: var(--muted); font-size: .65rem; font-weight: 800; }
+.once-ideal-roster { display: grid; max-height: 570px; gap: 7px; overflow-y: auto; padding-right: 3px; }
+.once-ideal-player-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 7px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 9px; cursor: grab; }
+.once-ideal-player-card:hover, .once-ideal-player-card.selected { border-color: var(--yellow); box-shadow: 0 4px 12px rgba(9,32,68,.08); }
+.once-ideal-player-card:active { cursor: grabbing; }
+.once-ideal-player-card-main { display: flex; min-width: 0; gap: 7px; align-items: center; }
+.once-ideal-player-position { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; color: #fff; background: #092044; border-radius: 7px; font-size: .6rem; font-weight: 900; }
+.once-ideal-player-card-main div { min-width: 0; display: grid; gap: 3px; }
+.once-ideal-player-card strong { overflow: hidden; color: var(--navy); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.once-ideal-player-card small { overflow: hidden; color: var(--muted); font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
+.once-ideal-player-button, .once-ideal-place-button { padding: 5px 7px; align-self: center; color: var(--navy); background: #f7f9fb; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: .6rem; font-weight: 900; cursor: pointer; }
+.once-ideal-player-button:hover, .once-ideal-place-button:hover { border-color: var(--green); }
+.once-ideal-place-button { grid-column: 1 / -1; color: #fff; background: var(--green); border-color: var(--green); }
+.once-ideal-empty { padding: 18px 8px; color: var(--muted); font-size: .72rem; text-align: center; }
+
+@media (max-width: 1180px) {
+  .once-ideal-layout { grid-template-columns: minmax(210px, .7fr) minmax(400px, 1.3fr); }
+  .once-ideal-roster-panel { grid-column: 1 / -1; max-height: none; }
+  .once-ideal-roster { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 330px; }
+}
+
+@media (max-width: 760px) {
+  .once-ideal-layout { grid-template-columns: 1fr; }
+  .once-ideal-roster-panel { grid-column: auto; }
+  .once-ideal-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .once-ideal-board { aspect-ratio: 9 / 16; max-height: 680px; background-image: url('../assets/once-ideal-pitch-tall.png'); }
+  .once-ideal-board .once-ideal-slot { left: var(--tall-x); top: var(--tall-y); }
+  .once-ideal-board-toolbar { align-items: flex-start; }
+  .once-ideal-heading-badge { display: none; }
+}
+
+@media (max-width: 480px) {
+  .once-ideal-roster { grid-template-columns: 1fr; }
+  .once-ideal-controls, .once-ideal-board-panel, .once-ideal-roster-panel { padding: 13px; }
+  .once-ideal-star { width: 58px; }
+  .once-ideal-star-glyph { font-size: 3.8rem; }
+}

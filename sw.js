@@ -1,17 +1,21 @@
-const cacheName = 'futbol-mx-analisis-pro-shell-v38';
+const cacheName = 'futbol-mx-analisis-pro-shell-v39';
 const appShell = [
   './',
   './index.html',
-  './css/style.css?v=22',
+  './css/style.css?v=23',
   './js/config.js',
   './js/app.js?v=18',
   './js/juego.js?v=11',
   './js/quiz.js?v=1',
   './js/quiz-runtime.js?v=1',
+  './js/once-ideal.js?v=1',
   './manifest.webmanifest',
   './assets/icon.svg',
   './assets/tifo-futbol-mx.png',
   './assets/emblema-rey-android.png',
+  './assets/once-ideal-pitch-wide.png',
+  './assets/once-ideal-pitch-tall.png',
+  './assets/once-ideal-stars.png',
   './privacidad.html',
   './terminos.html',
   './contacto.html',

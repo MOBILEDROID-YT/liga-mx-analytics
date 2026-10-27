@@ -7,7 +7,7 @@
   <meta name="description" content="F&uacute;tbol MX An&aacute;lisis PRO: datos, tips y herramientas para analizar cada jornada.">
   <title>F&uacute;tbol MX An&aacute;lisis PRO</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
   <header class="app-header">
@@ -31,6 +31,7 @@
         <a class="nav-link" href="#analisis" data-view-link="analisis">Análisis</a>
         <a class="nav-link" href="#herramientas" data-view-link="herramientas">Herramientas</a>
         <a class="nav-link" href="#juego" data-view-link="juego">Juego</a>
+        <a class="nav-link" href="#once-ideal" data-view-link="once-ideal">Mi once ideal</a>
       </nav>
 
       <div class="header-actions">
@@ -351,6 +352,73 @@
         <div id="game-container" class="game-container"></div>
       </div>
     </section>
+
+    <section id="view-once-ideal" class="app-view" data-view="once-ideal">
+      <div class="page-container once-ideal-page">
+        <div class="page-heading once-ideal-heading">
+          <div>
+            <span class="eyebrow">PLANTILLA LIBRE</span>
+            <h1>Mi once ideal</h1>
+            <p>Mezcla jugadores de los 18 clubes, prueba 30 formaciones y construye tu equipo perfecto.</p>
+          </div>
+          <div class="once-ideal-heading-badge"><span>11</span><small>titulares</small></div>
+        </div>
+        <div id="once-ideal-status" class="once-ideal-status" aria-live="polite">Cargando jugadores de Liga MX...</div>
+        <div class="once-ideal-layout">
+          <aside class="surface-card once-ideal-controls">
+            <div class="once-ideal-card-heading">
+              <span class="eyebrow">ESTRATEGIA</span>
+              <h2>Formación y roles</h2>
+            </div>
+            <label class="field-label" for="once-ideal-formation">Formación</label>
+            <select id="once-ideal-formation" class="select-control"></select>
+            <div class="once-ideal-form-fields">
+              <label><span class="field-label">Nombre del equipo</span><input id="once-ideal-team-name" class="text-control" maxlength="32" value="Mi Once Ideal"></label>
+              <label><span class="field-label">Nombre del entrenador</span><input id="once-ideal-coach-name" class="text-control" maxlength="32" value="Mi entrenador"></label>
+            </div>
+            <div class="once-ideal-role-fields">
+              <label><span class="field-label">Capitán</span><select id="once-ideal-captain" class="select-control"></select></label>
+              <label><span class="field-label">Penales</span><select id="once-ideal-penalty" class="select-control"></select></label>
+              <label><span class="field-label">Tiros libres</span><select id="once-ideal-free-kick" class="select-control"></select></label>
+              <label><span class="field-label">Corners</span><select id="once-ideal-corners" class="select-control"></select></label>
+            </div>
+            <div class="once-ideal-actions">
+              <button id="once-ideal-save" class="primary-btn" type="button">Guardar plantilla</button>
+              <button id="once-ideal-export-wide" class="secondary-btn" type="button">Exportar 16:9</button>
+              <button id="once-ideal-export-tall" class="secondary-btn" type="button">Exportar 9:16</button>
+            </div>
+            <div class="once-ideal-challenge" id="once-ideal-challenge"></div>
+            <div class="once-ideal-saved-block">
+              <div class="once-ideal-card-heading compact"><span class="eyebrow">ARCHIVO</span><h3>Mis plantillas</h3></div>
+              <div id="once-ideal-saved" class="once-ideal-saved-list"></div>
+            </div>
+          </aside>
+
+          <section class="surface-card once-ideal-board-panel" aria-label="Tablero de Mi once ideal">
+            <div class="once-ideal-board-toolbar">
+              <div><strong id="once-ideal-board-title">Mi Once Ideal</strong><span id="once-ideal-board-coach">Dirige: Mi entrenador</span></div>
+              <span id="once-ideal-slot-count">0/11 titulares</span>
+            </div>
+            <div id="once-ideal-board" class="once-ideal-board wide" role="application" aria-label="Arrastra jugadores a las posiciones">
+              <img class="once-ideal-stars-image" src="assets/once-ideal-stars.png" alt="" aria-hidden="true">
+              <div id="once-ideal-slots" class="once-ideal-slots"></div>
+            </div>
+            <p class="once-ideal-board-help">Arrastra un jugador a una estrella. En celular, toca “Colocar”. Puedes cambiar de formación en cualquier momento.</p>
+          </section>
+
+          <aside class="surface-card once-ideal-roster-panel">
+            <div class="once-ideal-card-heading">
+              <span class="eyebrow">MERCADO DE TALENTO</span>
+              <h2>Elige jugadores</h2>
+            </div>
+            <input id="once-ideal-search" class="text-control" type="search" placeholder="Buscar jugador..." autocomplete="off">
+            <select id="once-ideal-team-filter" class="select-control"></select>
+            <div class="once-ideal-roster-meta"><span id="once-ideal-roster-count">0 jugadores</span><span>Máximo 28</span></div>
+            <div id="once-ideal-roster" class="once-ideal-roster"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
   </main>
 
   <div id="team-modal" class="team-modal hidden" role="dialog" aria-modal="true" aria-label="Perfil del equipo">
@@ -445,5 +513,6 @@
   <script src="js/juego.js?v=11"></script>
   <script src="js/quiz.js?v=1"></script>
   <script src="js/quiz-runtime.js?v=1"></script>
+  <script src="js/once-ideal.js?v=1"></script>
 </body>
 </html>

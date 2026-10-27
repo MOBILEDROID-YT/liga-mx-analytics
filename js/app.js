@@ -24,7 +24,7 @@ const appState = {
 
 const CURRENT_JORNADA_OVERRIDE = 11;
 
-const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas', 'juego'];
+const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas', 'juego', 'once-ideal'];
 
 const categoryMeta = {
   base: { label: 'Base', className: 'tip-base', dot: 'green' },
