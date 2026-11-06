@@ -24,7 +24,7 @@ const appState = {
 
 const CURRENT_JORNADA_OVERRIDE = 11;
 
-const validViews = ['inicio', 'calendario', 'tips', 'equipos', 'analisis', 'herramientas', 'juego', 'once-ideal'];
+const validViews = ['inicio', 'calendario', 'liguilla', 'tips', 'equipos', 'analisis', 'herramientas', 'juego', 'once-ideal'];
 
 const categoryMeta = {
   base: { label: 'Base', className: 'tip-base', dot: 'green' },
@@ -951,6 +951,7 @@ function setView(view, updateHash = true) {
   }
 
   if (nextView === 'calendario') renderCalendar();
+  if (nextView === 'liguilla') window.renderLiguilla?.();
   if (nextView === 'tips') renderTips();
   if (nextView === 'analisis') {
     renderComparison();
@@ -983,6 +984,7 @@ function renderAll() {
   populateSelectors();
   renderHome();
   renderCalendar();
+  window.renderLiguilla?.();
   renderTips();
   renderStandings();
   renderFavorites();

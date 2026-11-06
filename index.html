@@ -7,7 +7,7 @@
   <meta name="description" content="F&uacute;tbol MX An&aacute;lisis PRO: datos, tips y herramientas para analizar cada jornada.">
   <title>F&uacute;tbol MX An&aacute;lisis PRO</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
   <header class="app-header">
@@ -26,6 +26,7 @@
       <nav id="main-nav" class="main-nav" aria-label="Navegación principal">
         <a class="nav-link active" href="#inicio" data-view-link="inicio">Inicio</a>
         <a class="nav-link" href="#calendario" data-view-link="calendario">Calendario</a>
+        <a class="nav-link" href="#liguilla" data-view-link="liguilla">Liguilla</a>
         <a class="nav-link" href="#tips" data-view-link="tips">Tips</a>
         <a class="nav-link" href="#equipos" data-view-link="equipos">Equipos</a>
         <a class="nav-link" href="#analisis" data-view-link="analisis">Análisis</a>
@@ -150,6 +151,24 @@
           <button id="full-calendar-btn" class="secondary-btn" type="button">Restablecer filtros</button>
         </div>
         <div id="calendar-results" class="calendar-board"></div>
+      </div>
+    </section>
+
+    <section id="view-liguilla" class="app-view" data-view="liguilla">
+      <div class="page-container">
+        <div class="page-heading playoff-page-heading">
+          <div>
+            <span class="eyebrow">FASE FINAL</span>
+            <h1>Liguilla</h1>
+            <p>La llave se actualiza con el Top 8 de la tabla cargada en Supabase. Cuartos y semifinales se juegan a ida y vuelta; la final es a partido único.</p>
+          </div>
+          <a class="youtube-promo" href="https://youtube.com/@mobiledroid_yt_oficial?si=N9sV6qNjM7Rt63Jx" target="_blank" rel="noopener noreferrer" aria-label="Suscríbete al canal de YouTube de MOBILEDROID">
+            <img src="assets/emblema-rey-android.png" alt="Emblema MOBILEDROID">
+            <span class="youtube-promo-label">SUSCRÍBETE</span>
+          </a>
+        </div>
+        <div id="liguilla-status" class="playoff-status" aria-live="polite"></div>
+        <div id="liguilla-container" class="playoff-board"></div>
       </div>
     </section>
 
@@ -511,8 +530,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/app.js?v=18"></script>
+  <script src="js/app.js?v=19"></script>
   <script src="js/rangos.js?v=1"></script>
+  <script src="js/liguilla.js?v=1"></script>
   <script src="js/juego.js?v=11"></script>
   <script src="js/quiz.js?v=1"></script>
   <script src="js/quiz-runtime.js?v=1"></script>
