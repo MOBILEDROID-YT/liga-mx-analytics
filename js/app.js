@@ -3,6 +3,7 @@ const appState = {
   teams: [],
   standings: [],
   matches: [],
+  liguillaMatches: [],
   tips: [],
   history: [],
   palmares: [],
@@ -394,6 +395,7 @@ async function initializeApp() {
       loadTeams(),
       loadStandings(),
       loadMatches(),
+      loadLiguillaMatches(),
       loadTips(),
       loadPalmares()
     ]);
@@ -445,6 +447,20 @@ async function loadMatches() {
   appState.matches = safeArray(data).sort((first, second) => {
     return new Date(first.fecha_hora_mx || 0) - new Date(second.fecha_hora_mx || 0);
   });
+}
+
+async function loadLiguillaMatches() {
+  const { data, error } = await supabaseClient
+    .from('liguilla_partidos')
+    .select('*')
+    .order('fase')
+    .order('serie')
+    .order('tramo');
+  if (error) {
+    appState.liguillaMatches = [];
+    return;
+  }
+  appState.liguillaMatches = safeArray(data);
 }
 
 async function loadTips() {

@@ -3,6 +3,10 @@ const adminState = {
   isAdmin: false,
   matches: [],
   tips: [],
+  standings: [],
+  liguillaMatches: [],
+  liguillaRows: [],
+  liguillaTableReady: false,
   tipDraftMatchId: null
 };
 
@@ -36,6 +40,196 @@ function adminDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'fecha pendiente';
   return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function adminDateTimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function adminStandings() {
+  return [...adminState.standings].sort((first, second) => {
+    return Number(second.pts || 0) - Number(first.pts || 0)
+      || Number(second.dg || 0) - Number(first.dg || 0)
+      || Number(second.gf || 0) - Number(first.gf || 0);
+  });
+}
+
+function adminTeamName(row, position) {
+  return row?.club || row?.nombre || row?.equipo || row?.team || `Por definir (${position}°)`;
+}
+
+function makeLiguillaRow(clave, fase, serie, tramo, local, visitante) {
+  return {
+    clave,
+    fase,
+    serie,
+    tramo,
+    local,
+    visitante,
+    fecha_hora_mx: null,
+    goles_local: null,
+    goles_visitante: null,
+    estado: 'programado'
+  };
+}
+
+function buildDefaultLiguillaRows() {
+  const standings = adminStandings();
+  const qualified = Array.from({ length: 8 }, (_, index) => adminTeamName(standings[index], index + 1));
+  const rows = [];
+  const pairings = [[1, 8], [2, 7], [3, 6], [4, 5]];
+  pairings.forEach(([higherSeed, lowerSeed], index) => {
+    const series = index + 1;
+    rows.push(makeLiguillaRow(`C${series}_IDA`, 'cuartos', series, 'ida', qualified[higherSeed - 1], qualified[lowerSeed - 1]));
+    rows.push(makeLiguillaRow(`C${series}_VUELTA`, 'cuartos', series, 'vuelta', qualified[lowerSeed - 1], qualified[higherSeed - 1]));
+  });
+  rows.push(makeLiguillaRow('S1_IDA', 'semifinal', 1, 'ida', 'Ganador de Serie 1', 'Ganador de Serie 4'));
+  rows.push(makeLiguillaRow('S1_VUELTA', 'semifinal', 1, 'vuelta', 'Ganador de Serie 4', 'Ganador de Serie 1'));
+  rows.push(makeLiguillaRow('S2_IDA', 'semifinal', 2, 'ida', 'Ganador de Serie 2', 'Ganador de Serie 3'));
+  rows.push(makeLiguillaRow('S2_VUELTA', 'semifinal', 2, 'vuelta', 'Ganador de Serie 3', 'Ganador de Serie 2'));
+  rows.push(makeLiguillaRow('F_UNICO', 'final', null, 'unico', 'Ganador de Semifinal 1', 'Ganador de Semifinal 2'));
+  return rows;
+}
+
+function mergeLiguillaRows(savedRows) {
+  const savedByKey = new Map(savedRows.map((row) => [String(row.clave), row]));
+  return buildDefaultLiguillaRows().map((row) => ({ ...row, ...(savedByKey.get(row.clave) || {}) }));
+}
+
+function renderLiguillaAdmin() {
+  const container = admin$('admin-liguilla-form');
+  const status = admin$('admin-liguilla-status');
+  if (!container || !status) return;
+
+  if (!adminState.liguillaTableReady) {
+    status.textContent = 'Ejecuta una sola vez supabase/04_liguilla_admin.sql para habilitar este apartado.';
+    container.innerHTML = '<div class="admin-playoff-empty">La estructura todavía no está habilitada. Tus partidos y tips actuales no se modifican.</div>';
+    return;
+  }
+
+  status.textContent = adminState.liguillaRows.length
+    ? 'Edita equipos, fechas, marcadores y estados. Después pulsa “Guardar liguilla”.'
+    : 'Pulsa “Preparar llave desde la tabla” para cargar las 11 partidas.';
+  if (!adminState.liguillaRows.length) {
+    container.innerHTML = '<div class="admin-playoff-empty">Todavía no hay una llave preparada.</div>';
+    return;
+  }
+
+  container.innerHTML = adminState.liguillaRows.map((row, index) => `
+    <div class="admin-playoff-row" data-liguilla-row="${index}" data-liguilla-id="${adminEscape(row.id || '')}">
+      <div class="admin-playoff-row-heading"><strong>${adminEscape(row.fase === 'cuartos' ? `Cuartos · Serie ${row.serie}` : row.fase === 'semifinal' ? `Semifinal ${row.serie}` : 'Final')}</strong><span>${adminEscape(row.tramo === 'unico' ? 'Partido único' : row.tramo)}</span></div>
+      <div class="admin-playoff-team-fields">
+        <label>Local<input class="text-control" data-liguilla-field="local" value="${adminEscape(row.local)}" maxlength="100"></label>
+        <label>Visitante<input class="text-control" data-liguilla-field="visitante" value="${adminEscape(row.visitante)}" maxlength="100"></label>
+      </div>
+      <div class="admin-playoff-score-fields">
+        <label>Fecha<input type="datetime-local" data-liguilla-field="fecha_hora_mx" value="${adminDateTimeLocal(row.fecha_hora_mx)}"></label>
+        <label>Local<input type="number" min="0" max="99" step="1" data-liguilla-field="goles_local" value="${row.goles_local ?? ''}"></label>
+        <label>Visitante<input type="number" min="0" max="99" step="1" data-liguilla-field="goles_visitante" value="${row.goles_visitante ?? ''}"></label>
+        <label>Estado<select data-liguilla-field="estado"><option value="programado" ${row.estado === 'programado' ? 'selected' : ''}>Programado</option><option value="en_vivo" ${row.estado === 'en_vivo' ? 'selected' : ''}>En vivo</option><option value="finalizado" ${row.estado === 'finalizado' ? 'selected' : ''}>Finalizado</option></select></label>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadLiguillaAdminData() {
+  const standingsResponse = await adminRequest(
+    supabaseClient.from('tabla_posiciones').select('*'),
+    'la tabla de posiciones'
+  );
+  adminState.standings = standingsResponse.error ? [] : (Array.isArray(standingsResponse.data) ? standingsResponse.data : []);
+
+  const response = await adminRequest(
+    supabaseClient.from('liguilla_partidos').select('*').order('clave'),
+    'la liguilla'
+  );
+  if (response.error) {
+    adminState.liguillaTableReady = false;
+    adminState.liguillaMatches = [];
+    adminState.liguillaRows = [];
+    renderLiguillaAdmin();
+    return;
+  }
+
+  adminState.liguillaTableReady = true;
+  adminState.liguillaMatches = Array.isArray(response.data) ? response.data : [];
+  adminState.liguillaRows = adminState.liguillaMatches.length ? mergeLiguillaRows(adminState.liguillaMatches) : [];
+  renderLiguillaAdmin();
+}
+
+function seedLiguillaAdmin() {
+  if (!adminState.liguillaTableReady) {
+    adminFeedback('Primero ejecuta supabase/04_liguilla_admin.sql.', 'error');
+    return;
+  }
+  adminState.liguillaRows = mergeLiguillaRows([]);
+  renderLiguillaAdmin();
+  adminFeedback('Llave preparada con el Top 8 actual. Revisa y guarda.', 'success');
+}
+
+function collectLiguillaRows() {
+  const container = admin$('admin-liguilla-form');
+  if (!container) return [];
+  return [...container.querySelectorAll('[data-liguilla-row]')].map((element, index) => {
+    const source = adminState.liguillaRows[index];
+    const field = (name) => element.querySelector(`[data-liguilla-field="${name}"]`)?.value ?? '';
+    const local = field('local').trim();
+    const visitante = field('visitante').trim();
+    if (!local || !visitante) throw new Error(`Completa los equipos de la fila ${index + 1}.`);
+    const dateValue = field('fecha_hora_mx');
+    const homeScore = field('goles_local');
+    const awayScore = field('goles_visitante');
+    const row = {
+      clave: source.clave,
+      fase: source.fase,
+      serie: source.serie,
+      tramo: source.tramo,
+      local,
+      visitante,
+      fecha_hora_mx: dateValue ? new Date(dateValue).toISOString() : null,
+      goles_local: homeScore === '' ? null : Number(homeScore),
+      goles_visitante: awayScore === '' ? null : Number(awayScore),
+      estado: field('estado') || 'programado',
+      updated_at: new Date().toISOString()
+    };
+    if (source.id) row.id = source.id;
+    return row;
+  });
+}
+
+async function saveLiguillaAdmin() {
+  if (!adminState.liguillaTableReady) {
+    adminFeedback('Primero ejecuta supabase/04_liguilla_admin.sql.', 'error');
+    return;
+  }
+  if (!adminState.liguillaRows.length) {
+    adminFeedback('Prepara la llave antes de guardarla.', 'error');
+    return;
+  }
+  let payload;
+  try {
+    payload = collectLiguillaRows();
+  } catch (error) {
+    adminFeedback(error.message, 'error');
+    return;
+  }
+  adminFeedback('Guardando la liguilla...', 'loading');
+  const { data, error } = await supabaseClient
+    .from('liguilla_partidos')
+    .upsert(payload, { onConflict: 'clave' })
+    .select('*');
+  if (error) {
+    adminFeedback(error.message || 'No se pudo guardar la liguilla.', 'error');
+    return;
+  }
+  adminState.liguillaMatches = Array.isArray(data) ? data : payload;
+  adminState.liguillaRows = mergeLiguillaRows(adminState.liguillaMatches);
+  renderLiguillaAdmin();
+  adminFeedback('Liguilla guardada. Recarga la web pública para ver los cambios.', 'success');
 }
 
 function adminUserName(user) {
@@ -178,6 +372,7 @@ async function loadAdminData() {
     };
   });
   renderTipOptions();
+  await loadLiguillaAdminData();
 }
 
 async function checkAdmin(user) {
@@ -332,6 +527,8 @@ function bindAdminEvents() {
   admin$('tip-select')?.addEventListener('change', fillTipForm);
   admin$('match-form')?.addEventListener('submit', saveMatch);
   admin$('tip-form')?.addEventListener('submit', saveTip);
+  admin$('admin-liguilla-seed-btn')?.addEventListener('click', seedLiguillaAdmin);
+  admin$('admin-liguilla-save-btn')?.addEventListener('click', saveLiguillaAdmin);
 }
 
 async function initializeAdmin() {

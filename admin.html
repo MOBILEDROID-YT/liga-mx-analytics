@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#071d3d">
   <meta name="description" content="Panel administrativo de F&uacute;tbol MX An&aacute;lisis PRO.">
   <title>Administraci&oacute;n | F&uacute;tbol MX An&aacute;lisis PRO</title>
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
   <header class="app-header">
@@ -141,6 +141,22 @@
             </form>
           </article>
         </div>
+        <article class="surface-card admin-panel admin-playoff-panel">
+          <div class="card-heading">
+            <div>
+              <span class="eyebrow">FASE FINAL</span>
+              <h2>Administrar liguilla</h2>
+            </div>
+            <span class="card-icon">🏆</span>
+          </div>
+          <p class="admin-note">Prepara la llave desde el Top 8 y actualiza cuartos, semifinales y final sin entrar de nuevo a Supabase.</p>
+          <div class="admin-playoff-actions">
+            <button id="admin-liguilla-seed-btn" class="secondary-btn" type="button">Preparar llave desde la tabla</button>
+            <button id="admin-liguilla-save-btn" class="auth-submit-btn" type="button">Guardar liguilla</button>
+          </div>
+          <div id="admin-liguilla-status" class="admin-note" role="status" aria-live="polite"></div>
+          <div id="admin-liguilla-form" class="admin-playoff-form"></div>
+        </article>
         <p id="admin-feedback" class="admin-feedback" role="status" aria-live="polite"></p>
       </section>
     </div>
@@ -156,6 +172,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/admin.js?v=7"></script>
+  <script src="js/admin.js?v=8"></script>
 </body>
 </html>

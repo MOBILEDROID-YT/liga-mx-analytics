@@ -6,7 +6,7 @@
   };
 
   function state() {
-    return typeof appState !== 'undefined' ? appState : { standings: [], matches: [] };
+    return typeof appState !== 'undefined' ? appState : { standings: [], matches: [], liguillaMatches: [] };
   }
 
   function escapeValue(value) {
@@ -53,14 +53,14 @@
   }
 
   function matchLeg(match) {
-    const value = normalizeValue([match?.fase, match?.ronda, match?.etapa, match?.instancia].filter(Boolean).join(' '));
-    if (value.includes('vuelta') || value.includes('2')) return 'Vuelta';
-    if (value.includes('ida') || value.includes('1')) return 'Ida';
+    const value = normalizeValue([match?.tramo, match?.fase, match?.ronda, match?.etapa, match?.instancia].filter(Boolean).join(' '));
+    if (value.includes('vuelta')) return 'Vuelta';
+    if (value.includes('ida')) return 'Ida';
     return '';
   }
 
   function findExistingMatch(teamA, teamB, phase, leg) {
-    const matches = state().matches || [];
+    const matches = [...(state().liguillaMatches || []), ...(state().matches || [])];
     const targetPhase = normalizeValue(phase);
     return matches.find((match) => {
       if (!isPlayoffMatch(match)) return false;
@@ -73,6 +73,20 @@
       const secondPair = local === normalizeValue(teamB) && visitor === normalizeValue(teamA);
       return firstPair || secondPair;
     });
+  }
+
+  function savedMatch(key) {
+    return (state().liguillaMatches || []).find((match) => String(match.clave || '') === key);
+  }
+
+  function applySavedTeams(series, key) {
+    const ida = savedMatch(`${key}_IDA`) || savedMatch(`${key}_UNICO`);
+    if (!ida) return series;
+    return {
+      ...series,
+      teamA: ida.local || series.teamA,
+      teamB: ida.visitante || series.teamB
+    };
   }
 
   function scoreLabel(match) {
@@ -130,12 +144,13 @@
       { label: 'Serie 2', seedLabel: '2° vs 7°', teamA: qualified[1].name, teamB: qualified[6].name, phase: 'cuartos' },
       { label: 'Serie 3', seedLabel: '3° vs 6°', teamA: qualified[2].name, teamB: qualified[5].name, phase: 'cuartos' },
       { label: 'Serie 4', seedLabel: '4° vs 5°', teamA: qualified[3].name, teamB: qualified[4].name, phase: 'cuartos' }
-    ];
+    ].map((series, index) => applySavedTeams(series, `C${index + 1}`));
 
-    const qfWinnerA = 'Ganador de Serie 1';
-    const qfWinnerB = 'Ganador de Serie 4';
-    const qfWinnerC = 'Ganador de Serie 2';
-    const qfWinnerD = 'Ganador de Serie 3';
+    const semi = [
+      applySavedTeams({ label: 'Semifinal 1', seedLabel: 'Serie 1 vs Serie 4', teamA: 'Ganador de Serie 1', teamB: 'Ganador de Serie 4', phase: 'semifinal' }, 'S1'),
+      applySavedTeams({ label: 'Semifinal 2', seedLabel: 'Serie 2 vs Serie 3', teamA: 'Ganador de Serie 2', teamB: 'Ganador de Serie 3', phase: 'semifinal' }, 'S2')
+    ];
+    const finalMatch = applySavedTeams({ teamA: 'Ganador de Semifinal 1', teamB: 'Ganador de Semifinal 2' }, 'F');
 
     status.className = `playoff-status ${complete ? 'success' : 'warning'}`;
     status.innerHTML = complete
@@ -151,18 +166,18 @@
         </section>
         <section class="playoff-column playoff-column-semi">
           <div class="playoff-column-heading"><span class="eyebrow">SEMIFINALES</span><h2>${phaseLabels.semi}</h2><small>Se habilitan al concluir cuartos</small></div>
-          ${placeholderSeries('Semifinal 1', qfWinnerA, qfWinnerB, 'semifinal')}
-          ${placeholderSeries('Semifinal 2', qfWinnerC, qfWinnerD, 'semifinal')}
+          ${seriesCard(semi[0])}
+          ${seriesCard(semi[1])}
         </section>
         <section class="playoff-column playoff-column-final">
           <div class="playoff-column-heading"><span class="eyebrow">CAMPEONATO</span><h2>${phaseLabels.final}</h2><small>Partido único</small></div>
           <article class="playoff-final-card">
             <span class="playoff-final-cup" aria-hidden="true">🏆</span>
             <span class="eyebrow">GRAN FINAL</span>
-            <strong>Ganador de Semifinal 1</strong>
+            <strong>${escapeValue(finalMatch.teamA)}</strong>
             <span>vs</span>
-            <strong>Ganador de Semifinal 2</strong>
-            <div class="playoff-final-score">Pendiente</div>
+            <strong>${escapeValue(finalMatch.teamB)}</strong>
+            <div class="playoff-final-score">${escapeValue(scoreLabel(savedMatch('FINAL_UNICO') || savedMatch('F_UNICO')))}</div>
           </article>
         </section>
       </div>
